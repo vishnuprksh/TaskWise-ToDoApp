@@ -30,6 +30,8 @@ import {
   ChevronDown,
   ChevronUp,
   Briefcase,
+  Archive,
+  Search,
 } from 'lucide-react-native';
 
 const STORAGE_KEY_TASKS = '@taskwise_tasks';
@@ -49,19 +51,31 @@ const ATTRIBUTE_VALUES = {
 };
 
 const DEFAULT_PROJECTS = [
-  { id: '1', name: 'Personal', color: '#3b82f6' },
-  { id: '2', name: 'Work', color: '#10b981' },
-  { id: '3', name: 'Shopping', color: '#f59e0b' },
+  { id: '1', name: 'Personal', color: '#3b82f6', archived: false },
+  { id: '2', name: 'Work', color: '#10b981', archived: false },
+  { id: '3', name: 'Shopping', color: '#f59e0b', archived: false },
 ];
 
 const calculatePriorityScore = (attrs) => {
   if (!attrs) return 0;
-  const score =
-    (ATTRIBUTE_VALUES[attrs.size] || 1) * PRIORITY_WEIGHTS.size +
-    (ATTRIBUTE_VALUES[attrs.importance] || 1) * PRIORITY_WEIGHTS.importance +
-    (ATTRIBUTE_VALUES[attrs.emergency] || 1) * PRIORITY_WEIGHTS.emergency +
-    (ATTRIBUTE_VALUES[attrs.interest] || 1) * PRIORITY_WEIGHTS.interest;
-  return parseFloat(score.toFixed(2));
+  try {
+    const size = ATTRIBUTE_VALUES[attrs.size] || 1;
+    const importance = ATTRIBUTE_VALUES[attrs.importance] || 1;
+    const emergency = ATTRIBUTE_VALUES[attrs.emergency] || 1;
+    const interest = ATTRIBUTE_VALUES[attrs.interest] || 1;
+
+    const score =
+      size * PRIORITY_WEIGHTS.size +
+      importance * PRIORITY_WEIGHTS.importance +
+      emergency * PRIORITY_WEIGHTS.emergency +
+      interest * PRIORITY_WEIGHTS.interest;
+
+    if (isNaN(score)) return 0;
+    return parseFloat(score.toFixed(2));
+  } catch (e) {
+    console.error('Error calculating priority', e);
+    return 0;
+  }
 };
 
 export default function App() {
@@ -69,6 +83,7 @@ export default function App() {
   const [projects, setProjects] = useState([]);
   const [isTaskModalVisible, setIsTaskModalVisible] = useState(false);
   const [isProjectModalVisible, setIsProjectModalVisible] = useState(false);
+  const [projectSearchText, setProjectSearchText] = useState('');
 
   // Task Form State
   const [editingTask, setEditingTask] = useState(null);
@@ -205,6 +220,7 @@ export default function App() {
       setEditingTask(null);
       setTaskText('');
       setSelectedProject(projects.length > 0 ? projects[0].id : null);
+      setProjectSearchText('');
       setAttributes({
         size: 'medium',
         importance: 'medium',
@@ -227,6 +243,7 @@ export default function App() {
       id: editingProject ? editingProject.id : Date.now().toString(),
       name: projectName,
       color: projectColor,
+      archived: editingProject ? editingProject.archived : false,
     };
 
     let newProjects;
@@ -263,6 +280,14 @@ export default function App() {
         }
       ]
     );
+  };
+
+  const toggleProjectArchive = (id) => {
+    const newProjects = projects.map((p) =>
+      p.id === id ? { ...p, archived: !p.archived } : p
+    );
+    setProjects(newProjects);
+    saveProjects(newProjects);
   };
 
   const openProjectModal = (project = null) => {
@@ -351,7 +376,9 @@ export default function App() {
                 )}
                 <View style={styles.priorityTag}>
                   <Flag size={12} color="#f59e0b" />
-                  <Text style={styles.priorityText}>{(item.priorityScore || 0).toFixed(1)}</Text>
+                  <Text style={styles.priorityText}>
+                    {typeof item.priorityScore === 'number' ? item.priorityScore.toFixed(1) : '0.0'}
+                  </Text>
                 </View>
               </View>
             </View>
@@ -390,7 +417,10 @@ export default function App() {
 
         {/* Task List */}
         <FlatList
-          data={tasks}
+          data={tasks.filter(t => {
+            const project = getProject(t.projectId);
+            return !project || !project.archived;
+          })}
           renderItem={renderTaskItem}
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.listContent}
@@ -440,26 +470,41 @@ export default function App() {
                 />
 
                 <Text style={styles.inputLabel}>Project</Text>
+
+                {/* Project Search */}
+                <View style={styles.searchContainer}>
+                  <Search size={16} color="#94a3b8" style={styles.searchIcon} />
+                  <TextInput
+                    style={styles.searchInput}
+                    placeholder="Search projects..."
+                    placeholderTextColor="#64748b"
+                    value={projectSearchText}
+                    onChangeText={setProjectSearchText}
+                  />
+                </View>
+
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.projectSelector}>
-                  {projects.map((project) => (
-                    <TouchableOpacity
-                      key={project.id}
-                      style={[
-                        styles.projectOption,
-                        selectedProject === project.id && { backgroundColor: project.color, borderColor: project.color },
-                      ]}
-                      onPress={() => setSelectedProject(project.id)}
-                    >
-                      <Text
+                  {projects
+                    .filter(p => !p.archived && p.name.toLowerCase().includes(projectSearchText.toLowerCase()))
+                    .map((project) => (
+                      <TouchableOpacity
+                        key={project.id}
                         style={[
-                          styles.projectOptionText,
-                          selectedProject === project.id && { color: '#fff' },
+                          styles.projectOption,
+                          selectedProject === project.id && { backgroundColor: project.color, borderColor: project.color },
                         ]}
+                        onPress={() => setSelectedProject(project.id)}
                       >
-                        {project.name}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                        <Text
+                          style={[
+                            styles.projectOptionText,
+                            selectedProject === project.id && { color: '#fff' },
+                          ]}
+                        >
+                          {project.name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
                 </ScrollView>
 
                 <View style={styles.divider} />
@@ -548,6 +593,9 @@ export default function App() {
                       <Text style={styles.projectListText}>{item.name}</Text>
                     </View>
                     <View style={styles.projectListActions}>
+                      <TouchableOpacity onPress={() => toggleProjectArchive(item.id)} style={{ marginRight: 15 }}>
+                        <Archive size={18} color={item.archived ? "#f59e0b" : "#64748b"} />
+                      </TouchableOpacity>
                       <TouchableOpacity onPress={() => openProjectModal(item)}>
                         <Edit2 size={18} color="#64748b" />
                       </TouchableOpacity>
@@ -738,6 +786,25 @@ const styles = StyleSheet.create({
     fontSize: 16,
     borderWidth: 1,
     borderColor: '#334155',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0f172a',
+    borderWidth: 1,
+    borderColor: '#334155',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    color: '#f8fafc',
+    fontSize: 14,
+    paddingVertical: 12,
   },
   projectSelector: {
     flexDirection: 'row',
