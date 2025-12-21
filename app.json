@@ -25,6 +25,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "30d3c40f-db01-42cb-8628-6815db92db13"
+      }
+    },
+    "owner": "vishnuprakash1797"
   }
 }
