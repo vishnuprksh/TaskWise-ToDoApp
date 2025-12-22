@@ -38,7 +38,7 @@ const STORAGE_KEY_TASKS = '@taskwise_tasks';
 const STORAGE_KEY_PROJECTS = '@taskwise_projects';
 
 const PRIORITY_WEIGHTS = {
-  size: 0.4,
+  easiness: 0.4,
   importance: 0.3,
   emergency: 0.2,
   interest: 0.1,
@@ -59,13 +59,13 @@ const DEFAULT_PROJECTS = [
 const calculatePriorityScore = (attrs) => {
   if (!attrs) return 0;
   try {
-    const size = ATTRIBUTE_VALUES[attrs.size] || 1;
+    const easiness = ATTRIBUTE_VALUES[attrs.easiness] || 1;
     const importance = ATTRIBUTE_VALUES[attrs.importance] || 1;
     const emergency = ATTRIBUTE_VALUES[attrs.emergency] || 1;
     const interest = ATTRIBUTE_VALUES[attrs.interest] || 1;
 
     const score =
-      size * PRIORITY_WEIGHTS.size +
+      easiness * PRIORITY_WEIGHTS.easiness +
       importance * PRIORITY_WEIGHTS.importance +
       emergency * PRIORITY_WEIGHTS.emergency +
       interest * PRIORITY_WEIGHTS.interest;
@@ -90,7 +90,7 @@ export default function App() {
   const [taskText, setTaskText] = useState('');
   const [selectedProject, setSelectedProject] = useState(null);
   const [attributes, setAttributes] = useState({
-    size: 'medium',
+    easiness: 'medium',
     importance: 'medium',
     emergency: 'medium',
     interest: 'medium',
@@ -123,7 +123,7 @@ export default function App() {
         parsedTasks = parsedTasks.map(task => {
           if (!task.attributes || task.priorityScore === undefined) {
             const defaultAttributes = {
-              size: 'medium',
+              easiness: task.attributes?.size || 'medium',
               importance: 'medium',
               emergency: 'medium',
               interest: 'medium',
@@ -222,7 +222,7 @@ export default function App() {
       setSelectedProject(projects.length > 0 ? projects[0].id : null);
       setProjectSearchText('');
       setAttributes({
-        size: 'medium',
+        easiness: 'medium',
         importance: 'medium',
         emergency: 'medium',
         interest: 'medium',
@@ -505,15 +505,22 @@ export default function App() {
                         </Text>
                       </TouchableOpacity>
                     ))}
+                  <TouchableOpacity
+                    style={[styles.projectOption, { borderColor: '#6366f1', borderStyle: 'dashed' }]}
+                    onPress={() => setIsProjectModalVisible(true)}
+                  >
+                    <Plus size={16} color="#6366f1" />
+                    <Text style={[styles.projectOptionText, { color: '#6366f1', marginLeft: 4 }]}>New</Text>
+                  </TouchableOpacity>
                 </ScrollView>
 
                 <View style={styles.divider} />
 
                 <Text style={styles.sectionTitle}>Priority Attributes</Text>
                 <AttributeSelector
-                  label="Size (40%)"
-                  value={attributes.size}
-                  onChange={(val) => setAttributes({ ...attributes, size: val })}
+                  label="Easiness (40%)"
+                  value={attributes.easiness}
+                  onChange={(val) => setAttributes({ ...attributes, easiness: val })}
                 />
                 <AttributeSelector
                   label="Importance (30%)"
@@ -611,7 +618,7 @@ export default function App() {
           </View>
         </Modal>
       </SafeAreaView>
-    </SafeAreaProvider>
+    </SafeAreaProvider >
   );
 }
 
