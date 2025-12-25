@@ -2,7 +2,7 @@
   "expo": {
     "name": "TaskWise",
     "slug": "taskwise",
-    "version": "2.1.0",
+    "version": "3.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -17,12 +17,13 @@
     },
     "android": {
       "package": "com.BrightTomorrow.TaskWise",
-      "versionCode": 2,
+      "versionCode": 5,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -32,6 +33,20 @@
         "projectId": "30d3c40f-db01-42cb-8628-6815db92db13"
       }
     },
-    "owner": "vishnuprakash1797"
+    "owner": "vishnuprakash1797",
+    "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "enableProguardInReleaseBuilds": true
+          }
+        }
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/auth",
+      "@react-native-google-signin/google-signin"
+    ]
   }
 }
