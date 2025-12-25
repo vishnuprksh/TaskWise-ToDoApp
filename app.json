@@ -46,7 +46,22 @@
       ],
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "TaskWidget",
+              "label": "TaskWise Widget",
+              "description": "Quick view of your tasks",
+              "minWidth": "320dp",
+              "minHeight": "120dp",
+              "updatePeriodMillis": 3600000
+            }
+          ]
+        }
+      ]
     ]
   }
 }

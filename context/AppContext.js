@@ -2,6 +2,7 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as AuthService from '../services/AuthService';
 import * as SyncService from '../services/SyncService';
+import { requestWidgetUpdate } from 'react-native-android-widget';
 
 const AppContext = createContext();
 
@@ -189,6 +190,7 @@ export const AppProvider = ({ children }) => {
 
         setTasks(newTasks);
         saveTasks(newTasks);
+        requestWidgetUpdate({ widgetName: 'TaskWidget' });
     };
 
     const updateProjects = (newProjects) => {
@@ -211,6 +213,7 @@ export const AppProvider = ({ children }) => {
         const sortedProjects = [...newProjects].sort((a, b) => a.name.localeCompare(b.name));
         setProjects(sortedProjects);
         saveProjects(sortedProjects);
+        requestWidgetUpdate({ widgetName: 'TaskWidget' });
     };
 
     const updateTaskTime = (taskId, secondsToAdd) => {
