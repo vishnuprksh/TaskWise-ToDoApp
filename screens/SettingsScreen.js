@@ -1,14 +1,18 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
 import { useApp } from '../context/AppContext';
-import { LogOut, RefreshCw, User } from 'lucide-react-native';
+import { LogOut, RefreshCw, User, ArrowLeft } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-export default function SettingsScreen() {
+export default function SettingsScreen({ navigation }) {
     const { user, signIn, signOut, syncNow, isSyncing } = useApp();
 
     return (
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container}>
             <View style={styles.header}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                    <ArrowLeft size={24} color="#f8fafc" />
+                </TouchableOpacity>
                 <Text style={styles.title}>Settings</Text>
             </View>
 
@@ -61,40 +65,43 @@ export default function SettingsScreen() {
             <View style={styles.footer}>
                 <Text style={styles.version}>TaskWise v3.0.0</Text>
             </View>
-        </View>
+        </SafeAreaView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#f8fafc',
+        backgroundColor: '#0f172a',
         padding: 20,
     },
     header: {
+        flexDirection: 'row',
+        alignItems: 'center',
         marginBottom: 30,
-        marginTop: 20,
+        marginTop: 10,
+    },
+    backButton: {
+        marginRight: 15,
+        padding: 5,
     },
     title: {
         fontSize: 28,
         fontWeight: 'bold',
-        color: '#1e293b',
+        color: '#f8fafc',
     },
     section: {
         marginBottom: 30,
-        backgroundColor: '#ffffff',
+        backgroundColor: '#1e293b',
         borderRadius: 16,
         padding: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 8,
-        elevation: 2,
+        borderWidth: 1,
+        borderColor: '#334155',
     },
     sectionTitle: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#334155',
+        color: '#94a3b8',
         marginBottom: 15,
     },
     profileCard: {
@@ -102,28 +109,32 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     avatar: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
-        backgroundColor: '#e2e8f0',
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#334155',
+        borderWidth: 2,
+        borderColor: '#6366f1',
     },
     userInfo: {
         flex: 1,
         marginLeft: 15,
     },
     userName: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#1e293b',
+        fontSize: 18,
+        fontWeight: '700',
+        color: '#f8fafc',
     },
     userEmail: {
         fontSize: 14,
-        color: '#64748b',
+        color: '#94a3b8',
     },
     signOutButton: {
         padding: 10,
-        backgroundColor: '#fee2e2',
-        borderRadius: 10,
+        backgroundColor: '#ef444420',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#ef444440',
     },
     signInContainer: {
         alignItems: 'center',
@@ -131,33 +142,32 @@ const styles = StyleSheet.create({
     },
     signInText: {
         fontSize: 14,
-        color: '#64748b',
-        marginBottom: 15,
+        color: '#94a3b8',
+        marginBottom: 20,
         textAlign: 'center',
+        lineHeight: 20,
     },
     googleButton: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#ffffff',
-        borderWidth: 1,
-        borderColor: '#e2e8f0',
         paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderRadius: 10,
+        paddingHorizontal: 24,
+        borderRadius: 12,
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 5,
     },
     googleIcon: {
         width: 20,
         height: 20,
-        marginRight: 10,
+        marginRight: 12,
     },
     googleButtonText: {
         fontSize: 16,
-        fontWeight: '500',
+        fontWeight: '600',
         color: '#1e293b',
     },
     syncButton: {
@@ -165,27 +175,34 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: '#6366f1',
-        padding: 15,
+        padding: 16,
         borderRadius: 12,
+        shadowColor: '#6366f1',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
     },
     syncButtonText: {
         color: '#ffffff',
         fontSize: 16,
-        fontWeight: '600',
+        fontWeight: '700',
         marginLeft: 10,
     },
     syncNote: {
         fontSize: 12,
-        color: '#94a3b8',
-        marginTop: 10,
+        color: '#64748b',
+        marginTop: 12,
         textAlign: 'center',
     },
     footer: {
         marginTop: 'auto',
         alignItems: 'center',
+        paddingBottom: 20,
     },
     version: {
-        color: '#cbd5e1',
+        color: '#334155',
         fontSize: 12,
+        fontWeight: '500',
     },
 });

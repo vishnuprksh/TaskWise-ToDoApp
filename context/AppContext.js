@@ -139,10 +139,13 @@ export const AppProvider = ({ children }) => {
             }
 
             if (savedProjects) {
-                setProjects(JSON.parse(savedProjects));
+                const parsedProjects = JSON.parse(savedProjects);
+                parsedProjects.sort((a, b) => a.name.localeCompare(b.name));
+                setProjects(parsedProjects);
             } else {
-                setProjects(DEFAULT_PROJECTS);
-                saveProjects(DEFAULT_PROJECTS);
+                const sortedDefault = [...DEFAULT_PROJECTS].sort((a, b) => a.name.localeCompare(b.name));
+                setProjects(sortedDefault);
+                saveProjects(sortedDefault);
             }
         } catch (error) {
             console.error('Failed to load data', error);
@@ -205,8 +208,9 @@ export const AppProvider = ({ children }) => {
             });
         }
 
-        setProjects(newProjects);
-        saveProjects(newProjects);
+        const sortedProjects = [...newProjects].sort((a, b) => a.name.localeCompare(b.name));
+        setProjects(sortedProjects);
+        saveProjects(sortedProjects);
     };
 
     const updateTaskTime = (taskId, secondsToAdd) => {

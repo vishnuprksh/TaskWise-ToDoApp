@@ -13,6 +13,7 @@ import {
     Modal,
     ScrollView,
     Animated,
+    Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -29,7 +30,13 @@ import {
     PlayCircle,
     Filter,
     Settings,
+    ChevronDown,
+    ChevronRight,
+    Eye,
+    EyeOff,
+    Clock,
 } from 'lucide-react-native';
+import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useApp } from '../context/AppContext';
 
 export default function HomeScreen({ navigation }) {
@@ -37,6 +44,7 @@ export default function HomeScreen({ navigation }) {
     const [isTaskModalVisible, setIsTaskModalVisible] = useState(false);
     const [projectSearchText, setProjectSearchText] = useState('');
     const [selectedFilterProject, setSelectedFilterProject] = useState(null); // null means 'All'
+    const [isFinishedExpanded, setIsFinishedExpanded] = useState(false);
 
     // Task Form State
     const [editingTask, setEditingTask] = useState(null);
@@ -126,6 +134,15 @@ export default function HomeScreen({ navigation }) {
 
     const getProject = (id) => projects.find((p) => p.id === id);
 
+    const getAttributeColor = (level) => {
+        switch (level) {
+            case 'high': return '#ef4444';
+            case 'medium': return '#f59e0b';
+            case 'low': return '#10b981';
+            default: return '#94a3b8';
+        }
+    };
+
     const AttributeSelector = ({ label, value, onChange }) => (
         <View style={styles.attributeRow}>
             <Text style={styles.attributeLabel}>{label}</Text>
@@ -154,275 +171,330 @@ export default function HomeScreen({ navigation }) {
         </View>
     );
 
-    const getAttributeColor = (value) => {
-        switch (value) {
-            case 'high': return '#ef4444';
-            case 'medium': return '#f59e0b';
-            case 'low': return '#10b981';
-            default: return '#64748b';
-        }
+    const formatTime = (seconds) => {
+        const hrs = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        if (hrs > 0) return `${hrs}h ${mins}m`;
+        return `${mins}m`;
     };
 
-    const renderTaskItem = ({ item }) => {
-        const project = getProject(item.projectId);
+    const renderRightActions = (progress, dragX) => {
         return (
-            <Animated.View style={[styles.taskContainer, { opacity: fadeAnim }]}>
-                <View style={styles.taskMain}>
-                    <TouchableOpacity
-                        style={styles.taskTextContainer}
-                        onPress={() => toggleTask(item.id)}
-                    >
-                        {item.completed ? (
-                            <CheckCircle2 size={24} color="#10b981" />
-                        ) : (
-                            <Circle size={24} color="#94a3b8" />
-                        )}
-                        <View style={styles.taskContent}>
-                            <Text style={[styles.taskText, item.completed && styles.completedTaskText]}>
-                                {item.text}
-                            </Text>
-                            <View style={styles.taskMeta}>
-                                {project && (
-                                    <View style={[styles.projectTag, { backgroundColor: project.color + '20' }]}>
-                                        <View style={[styles.projectDot, { backgroundColor: project.color }]} />
-                                        <Text style={[styles.projectTagText, { color: project.color }]}>
-                                            {project.name}
+            <View style={styles.deleteActionPlaceholder} />
+        );
+    };
+
+    const TaskItem = ({ item, onOpenModal, onToggle, onNavigateTimer }) => {
+        const swipeableRef = useRef(null);
+        const project = getProject(item.projectId);
+
+        return (
+            <Swipeable
+                ref={swipeableRef}
+                renderRightActions={renderRightActions}
+                onSwipeableOpen={(direction) => {
+                    if (direction === 'right') {
+                        swipeableRef.current?.close();
+                        Alert.alert(
+                            "Delete Task",
+                            "Are you sure you want to delete this task?",
+                            [
+                                { text: "Cancel", style: "cancel" },
+                                { text: "Delete", style: "destructive", onPress: () => deleteTask(item.id) }
+                            ]
+                        );
+                    }
+                }}
+            >
+                <Animated.View style={[styles.taskContainer, { opacity: fadeAnim }]}>
+                    <View style={styles.taskMain}>
+                        <TouchableOpacity
+                            style={styles.taskTextContainer}
+                            onPress={() => onOpenModal(item)}
+                        >
+                            <TouchableOpacity
+                                onPress={() => onToggle(item.id)}
+                                style={styles.checkbox}
+                            >
+                                {item.completed ? (
+                                    <CheckCircle2 size={24} color="#10b981" />
+                                ) : (
+                                    <Circle size={24} color="#94a3b8" />
+                                )}
+                            </TouchableOpacity>
+                            <View style={styles.taskContent}>
+                                <Text style={[styles.taskText, item.completed && styles.completedTaskText]}>
+                                    {item.text}
+                                </Text>
+                                <View style={styles.taskMeta}>
+                                    {project && (
+                                        <View style={[styles.projectTag, { backgroundColor: project.color + '20' }]}>
+                                            <View style={[styles.projectDot, { backgroundColor: project.color }]} />
+                                            <Text style={[styles.projectTagText, { color: project.color }]}>
+                                                {project.name}
+                                            </Text>
+                                        </View>
+                                    )}
+                                    <View style={styles.priorityTag}>
+                                        <Flag size={12} color="#f59e0b" />
+                                        <Text style={styles.priorityText}>
+                                            {typeof item.priorityScore === 'number' ? item.priorityScore.toFixed(1) : '0.0'}
                                         </Text>
                                     </View>
-                                )}
-                                <View style={styles.priorityTag}>
-                                    <Flag size={12} color="#f59e0b" />
-                                    <Text style={styles.priorityText}>
-                                        {typeof item.priorityScore === 'number' ? item.priorityScore.toFixed(1) : '0.0'}
-                                    </Text>
+                                    {item.timeSpent > 0 && (
+                                        <View style={styles.timeSpentTag}>
+                                            <Clock size={12} color="#94a3b8" />
+                                            <Text style={styles.timeSpentText}>{formatTime(item.timeSpent)}</Text>
+                                        </View>
+                                    )}
                                 </View>
                             </View>
+                        </TouchableOpacity>
+                        <View style={styles.taskActions}>
+                            <TouchableOpacity onPress={() => onNavigateTimer(item)} style={styles.actionButton}>
+                                <PlayCircle size={20} color="#6366f1" />
+                            </TouchableOpacity>
                         </View>
-                    </TouchableOpacity>
-                    <View style={styles.taskActions}>
-                        <TouchableOpacity onPress={() => navigation.navigate('Timer', { task: item })} style={styles.actionButton}>
-                            <PlayCircle size={20} color="#6366f1" />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => openTaskModal(item)} style={styles.actionButton}>
-                            <Edit2 size={20} color="#64748b" />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => deleteTask(item.id)} style={styles.actionButton}>
-                            <Trash2 size={20} color="#ef4444" />
-                        </TouchableOpacity>
                     </View>
-                </View>
-            </Animated.View>
+                </Animated.View>
+            </Swipeable>
         );
     };
 
     const filteredTasks = tasks.filter(t => {
         const project = getProject(t.projectId);
-        // Filter by selected project (if any)
         if (selectedFilterProject && t.projectId !== selectedFilterProject) return false;
-        // Filter out archived projects (unless selected explicitly, though UI might prevent selecting archived)
         return !project || !project.archived;
     });
 
+    const activeTasks = filteredTasks.filter(t => !t.completed);
+    const finishedTasks = filteredTasks.filter(t => t.completed);
+
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="light-content" />
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <SafeAreaView style={styles.container}>
+                <StatusBar barStyle="light-content" />
 
-            {/* Header */}
-            <View style={styles.header}>
-                <View>
-                    <View style={styles.titleContainer}>
-                        <LayoutList size={32} color="#6366f1" />
-                        <Text style={styles.title}>
-                            {selectedFilterProject ? getProject(selectedFilterProject)?.name : 'TaskWise'}
-                        </Text>
-                    </View>
-                    <Text style={styles.subtitle}>Stay organized, stay ahead.</Text>
-                </View>
-                <View style={styles.headerActions}>
-                    {/* Project Filter Dropdown (Simplified as a cycle button for now or modal) */}
-                    {/* Let's make it a horizontal scroll selector below header or a modal picker. 
-               User asked for "top right corner option". Let's use a simple modal or just a button that cycles/opens selection.
-               For simplicity and UX, let's put a filter icon that opens a small modal or just cycles. 
-               Actually, let's implement a horizontal list of chips below the header for filtering, it's cleaner.
-               Wait, user specifically asked "top right corner option".
-           */}
-                    <TouchableOpacity
-                        style={styles.filterButton}
-                        onPress={() => {
-                            // Simple implementation: Cycle through projects or show a picker. 
-                            // For better UX, let's use a simple alert/action sheet style for now or a custom modal.
-                            // Let's use a custom small modal for selection.
-                            // Or navigate to a "Filter" screen? No, that's too much.
-                            // Let's just add a horizontal list below header for now, it's better than a hidden menu.
-                            // BUT, adhering to "top right corner option":
-                            // I will make this button toggle a visibility of a filter bar.
-                        }}
-                    >
-                        {/* Placeholder for now, will implement filter bar below */}
-                    </TouchableOpacity>
-
-                    <TouchableOpacity onPress={() => navigation.navigate('Projects')} style={styles.projectsButton}>
-                        <Briefcase size={20} color="#fff" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={styles.projectsButton}>
-                        <Settings size={20} color="#fff" />
-                    </TouchableOpacity>
-                </View>
-            </View>
-
-            {/* Project Filter Bar (Visible always or toggleable) */}
-            <View style={styles.filterBar}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-                    <TouchableOpacity
-                        style={[styles.filterChip, !selectedFilterProject && styles.filterChipSelected]}
-                        onPress={() => setSelectedFilterProject(null)}
-                    >
-                        <Text style={[styles.filterChipText, !selectedFilterProject && styles.filterChipTextSelected]}>All</Text>
-                    </TouchableOpacity>
-                    {projects.filter(p => !p.archived).map(p => (
-                        <TouchableOpacity
-                            key={p.id}
-                            style={[styles.filterChip, selectedFilterProject === p.id && styles.filterChipSelected, { borderColor: p.color }]}
-                            onPress={() => setSelectedFilterProject(p.id)}
-                        >
-                            <View style={[styles.projectDot, { backgroundColor: p.color }]} />
-                            <Text style={[styles.filterChipText, selectedFilterProject === p.id && styles.filterChipTextSelected]}>{p.name}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </ScrollView>
-            </View>
-
-            {/* Task List */}
-            <FlatList
-                data={filteredTasks}
-                renderItem={renderTaskItem}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.listContent}
-                showsVerticalScrollIndicator={false}
-                ListEmptyComponent={
-                    <View style={styles.emptyState}>
-                        <Text style={styles.emptyStateText}>No tasks found.</Text>
-                    </View>
-                }
-            />
-
-            {/* Add Task FAB */}
-            <TouchableOpacity
-                style={styles.fab}
-                onPress={() => openTaskModal()}
-            >
-                <Plus size={32} color="#fff" />
-            </TouchableOpacity>
-
-            {/* Task Modal */}
-            <Modal
-                visible={isTaskModalVisible}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={closeTaskModal}
-            >
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={styles.modalOverlay}
-                >
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>{editingTask ? 'Edit Task' : 'New Task'}</Text>
-                            <TouchableOpacity onPress={closeTaskModal}>
-                                <X size={24} color="#94a3b8" />
-                            </TouchableOpacity>
+                {/* Header */}
+                <View style={styles.header}>
+                    <View>
+                        <View style={styles.titleContainer}>
+                            <LayoutList size={32} color="#6366f1" />
+                            <Text style={styles.title}>
+                                {selectedFilterProject ? getProject(selectedFilterProject)?.name : 'TaskWise'}
+                            </Text>
                         </View>
+                        <Text style={styles.subtitle}>Stay organized, stay ahead.</Text>
+                    </View>
+                    <View style={styles.headerActions}>
+                        <TouchableOpacity onPress={() => navigation.navigate('Projects')} style={styles.headerButton}>
+                            <Briefcase size={20} color="#fff" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={styles.headerButton}>
+                            <Settings size={20} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
 
-                        <ScrollView style={styles.modalBody}>
-                            <Text style={styles.inputLabel}>Task Name</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="What needs to be done?"
-                                placeholderTextColor="#64748b"
-                                value={taskText}
-                                onChangeText={setTaskText}
-                            />
+                {/* Project Filter Bar */}
+                <View style={styles.filterBar}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+                        <TouchableOpacity
+                            style={[
+                                styles.filterChip,
+                                !selectedFilterProject ? styles.filterChipSelected : { opacity: 0.6 }
+                            ]}
+                            onPress={() => setSelectedFilterProject(null)}
+                        >
+                            <Text style={[styles.filterChipText, !selectedFilterProject && styles.filterChipTextSelected]}>All</Text>
+                        </TouchableOpacity>
+                        {projects.filter(p => !p.archived).map(p => {
+                            const isSelected = selectedFilterProject === p.id;
+                            return (
+                                <TouchableOpacity
+                                    key={p.id}
+                                    style={[
+                                        styles.filterChip,
+                                        isSelected
+                                            ? [styles.filterChipSelected, { borderColor: p.color }]
+                                            : { borderColor: '#334155', opacity: 0.6 }
+                                    ]}
+                                    onPress={() => setSelectedFilterProject(p.id)}
+                                >
+                                    <View style={[styles.projectDot, { backgroundColor: isSelected ? p.color : '#64748b' }]} />
+                                    <Text style={[styles.filterChipText, isSelected && styles.filterChipTextSelected]}>{p.name}</Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
+                </View>
 
-                            <Text style={styles.inputLabel}>Project</Text>
-
-                            {/* Project Search */}
-                            <View style={styles.searchContainer}>
-                                <Search size={16} color="#94a3b8" style={styles.searchIcon} />
-                                <TextInput
-                                    style={styles.searchInput}
-                                    placeholder="Search projects..."
-                                    placeholderTextColor="#64748b"
-                                    value={projectSearchText}
-                                    onChangeText={setProjectSearchText}
+                {/* Task List */}
+                <ScrollView contentContainerStyle={styles.listContent} showsVerticalScrollIndicator={false}>
+                    {activeTasks.length > 0 ? (
+                        activeTasks.map(item => (
+                            <View key={item.id}>
+                                <TaskItem
+                                    item={item}
+                                    onOpenModal={openTaskModal}
+                                    onToggle={toggleTask}
+                                    onNavigateTimer={(task) => navigation.navigate('Timer', { task })}
                                 />
                             </View>
+                        ))
+                    ) : finishedTasks.length === 0 ? (
+                        <View style={styles.emptyState}>
+                            <Text style={styles.emptyStateText}>No tasks found.</Text>
+                        </View>
+                    ) : null}
 
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.projectSelector}>
-                                {projects
-                                    .filter(p => !p.archived && p.name.toLowerCase().includes(projectSearchText.toLowerCase()))
-                                    .map((project) => (
-                                        <TouchableOpacity
-                                            key={project.id}
-                                            style={[
-                                                styles.projectOption,
-                                                selectedProject === project.id && { backgroundColor: project.color, borderColor: project.color },
-                                            ]}
-                                            onPress={() => setSelectedProject(project.id)}
-                                        >
-                                            <Text
-                                                style={[
-                                                    styles.projectOptionText,
-                                                    selectedProject === project.id && { color: '#fff' },
-                                                ]}
-                                            >
-                                                {project.name}
-                                            </Text>
-                                        </TouchableOpacity>
+                    {finishedTasks.length > 0 && (
+                        <View style={styles.finishedSection}>
+                            <TouchableOpacity
+                                style={styles.finishedHeader}
+                                onPress={() => setIsFinishedExpanded(!isFinishedExpanded)}
+                            >
+                                <View style={styles.finishedHeaderLeft}>
+                                    {isFinishedExpanded ? <ChevronDown size={20} color="#94a3b8" /> : <ChevronRight size={20} color="#94a3b8" />}
+                                    <Text style={styles.finishedTitle}>Finished ({finishedTasks.length})</Text>
+                                </View>
+                            </TouchableOpacity>
+                            {isFinishedExpanded && (
+                                <View style={styles.finishedList}>
+                                    {finishedTasks.map(item => (
+                                        <View key={item.id}>
+                                            <TaskItem
+                                                item={item}
+                                                onOpenModal={openTaskModal}
+                                                onToggle={toggleTask}
+                                                onNavigateTimer={(task) => navigation.navigate('Timer', { task })}
+                                            />
+                                        </View>
                                     ))}
-                                <TouchableOpacity
-                                    style={[styles.projectOption, { borderColor: '#6366f1', borderStyle: 'dashed' }]}
-                                    onPress={() => {
-                                        closeTaskModal();
-                                        navigation.navigate('Projects', { openCreate: true });
-                                    }}
-                                >
-                                    <Plus size={16} color="#6366f1" />
-                                    <Text style={[styles.projectOptionText, { color: '#6366f1', marginLeft: 4 }]}>New</Text>
+                                </View>
+                            )}
+                        </View>
+                    )}
+                </ScrollView>
+
+                {/* Add Task FAB */}
+                <TouchableOpacity
+                    style={styles.fab}
+                    onPress={() => openTaskModal()}
+                >
+                    <Plus size={32} color="#fff" />
+                </TouchableOpacity>
+
+                {/* Task Modal */}
+                <Modal
+                    visible={isTaskModalVisible}
+                    animationType="slide"
+                    transparent={true}
+                    onRequestClose={closeTaskModal}
+                >
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        style={styles.modalOverlay}
+                    >
+                        <View style={styles.modalContent}>
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>{editingTask ? 'Edit Task' : 'New Task'}</Text>
+                                <TouchableOpacity onPress={closeTaskModal}>
+                                    <X size={24} color="#94a3b8" />
                                 </TouchableOpacity>
+                            </View>
+
+                            <ScrollView style={styles.modalBody}>
+                                <Text style={styles.inputLabel}>Task Name</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="What needs to be done?"
+                                    placeholderTextColor="#64748b"
+                                    value={taskText}
+                                    onChangeText={setTaskText}
+                                />
+
+                                <Text style={styles.inputLabel}>Project</Text>
+
+                                {/* Project Search */}
+                                <View style={styles.searchContainer}>
+                                    <Search size={16} color="#94a3b8" style={styles.searchIcon} />
+                                    <TextInput
+                                        style={styles.searchInput}
+                                        placeholder="Search projects..."
+                                        placeholderTextColor="#64748b"
+                                        value={projectSearchText}
+                                        onChangeText={setProjectSearchText}
+                                    />
+                                </View>
+
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.projectSelector}>
+                                    {projects
+                                        .filter(p => !p.archived && p.name.toLowerCase().includes(projectSearchText.toLowerCase()))
+                                        .map((project) => (
+                                            <TouchableOpacity
+                                                key={project.id}
+                                                style={[
+                                                    styles.projectOption,
+                                                    selectedProject === project.id && { backgroundColor: project.color, borderColor: project.color },
+                                                ]}
+                                                onPress={() => setSelectedProject(project.id)}
+                                            >
+                                                <Text
+                                                    style={[
+                                                        styles.projectOptionText,
+                                                        selectedProject === project.id && { color: '#fff' },
+                                                    ]}
+                                                >
+                                                    {project.name}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    <TouchableOpacity
+                                        style={[styles.projectOption, { borderColor: '#6366f1', borderStyle: 'dashed' }]}
+                                        onPress={() => {
+                                            closeTaskModal();
+                                            navigation.navigate('Projects', { openCreate: true });
+                                        }}
+                                    >
+                                        <Plus size={16} color="#6366f1" />
+                                        <Text style={[styles.projectOptionText, { color: '#6366f1', marginLeft: 4 }]}>New</Text>
+                                    </TouchableOpacity>
+                                </ScrollView>
+
+                                <View style={styles.divider} />
+
+                                <Text style={styles.sectionTitle}>Priority Attributes</Text>
+                                <AttributeSelector
+                                    label="Easiness (40%)"
+                                    value={attributes.easiness}
+                                    onChange={(val) => setAttributes({ ...attributes, easiness: val })}
+                                />
+                                <AttributeSelector
+                                    label="Importance (30%)"
+                                    value={attributes.importance}
+                                    onChange={(val) => setAttributes({ ...attributes, importance: val })}
+                                />
+                                <AttributeSelector
+                                    label="Emergency (20%)"
+                                    value={attributes.emergency}
+                                    onChange={(val) => setAttributes({ ...attributes, emergency: val })}
+                                />
+                                <AttributeSelector
+                                    label="Interest (10%)"
+                                    value={attributes.interest}
+                                    onChange={(val) => setAttributes({ ...attributes, interest: val })}
+                                />
                             </ScrollView>
 
-                            <View style={styles.divider} />
-
-                            <Text style={styles.sectionTitle}>Priority Attributes</Text>
-                            <AttributeSelector
-                                label="Easiness (40%)"
-                                value={attributes.easiness}
-                                onChange={(val) => setAttributes({ ...attributes, easiness: val })}
-                            />
-                            <AttributeSelector
-                                label="Importance (30%)"
-                                value={attributes.importance}
-                                onChange={(val) => setAttributes({ ...attributes, importance: val })}
-                            />
-                            <AttributeSelector
-                                label="Emergency (20%)"
-                                value={attributes.emergency}
-                                onChange={(val) => setAttributes({ ...attributes, emergency: val })}
-                            />
-                            <AttributeSelector
-                                label="Interest (10%)"
-                                value={attributes.interest}
-                                onChange={(val) => setAttributes({ ...attributes, interest: val })}
-                            />
-                        </ScrollView>
-
-                        <TouchableOpacity style={styles.saveButton} onPress={handleSaveTask}>
-                            <Text style={styles.saveButtonText}>Save Task</Text>
-                        </TouchableOpacity>
-                    </View>
-                </KeyboardAvoidingView>
-            </Modal>
-        </SafeAreaView>
+                            <TouchableOpacity style={styles.saveButton} onPress={handleSaveTask}>
+                                <Text style={styles.saveButtonText}>Save Task</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </KeyboardAvoidingView>
+                </Modal>
+            </SafeAreaView>
+        </GestureHandlerRootView>
     );
 }
 
@@ -430,6 +502,57 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#0f172a',
+    },
+    deleteAction: {
+        backgroundColor: '#ef4444',
+        justifyContent: 'center',
+        alignItems: 'center',
+        width: 80,
+        height: '88%',
+        borderRadius: 16,
+        marginBottom: 12,
+    },
+    checkbox: {
+        padding: 4,
+        marginLeft: -4,
+    },
+    timeSpentTag: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#33415540',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+        gap: 4,
+    },
+    timeSpentText: {
+        color: '#94a3b8',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    finishedSection: {
+        marginTop: 20,
+    },
+    finishedHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 10,
+        borderTopWidth: 1,
+        borderTopColor: '#334155',
+    },
+    finishedHeaderLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    finishedTitle: {
+        color: '#94a3b8',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    finishedList: {
+        marginTop: 10,
     },
     header: {
         paddingHorizontal: 20,
@@ -460,10 +583,19 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 10,
     },
-    projectsButton: {
-        backgroundColor: '#334155',
+    headerButton: {
+        backgroundColor: '#6366f1',
         padding: 10,
         borderRadius: 12,
+        shadowColor: '#6366f1',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    deleteActionPlaceholder: {
+        width: 100,
+        backgroundColor: 'transparent',
     },
     filterBar: {
         paddingHorizontal: 20,
@@ -487,6 +619,13 @@ const styles = StyleSheet.create({
     filterChipSelected: {
         backgroundColor: '#334155',
         borderColor: '#6366f1',
+        borderWidth: 2,
+        shadowColor: '#6366f1',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.5,
+        shadowRadius: 10,
+        elevation: 5,
+        transform: [{ scale: 1.05 }],
     },
     filterChipText: {
         color: '#94a3b8',

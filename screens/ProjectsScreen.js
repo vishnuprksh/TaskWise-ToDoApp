@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
     StyleSheet,
     Text,
@@ -21,7 +21,10 @@ import {
     ArrowLeft,
     Plus,
     Clock,
+    Eye,
+    EyeOff,
 } from 'lucide-react-native';
+import { Swipeable, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useApp } from '../context/AppContext';
 
 export default function ProjectsScreen({ navigation, route }) {
@@ -105,108 +108,142 @@ export default function ProjectsScreen({ navigation, route }) {
         Keyboard.dismiss();
     };
 
-    const getProjectTotalTime = (projectId) => {
-        const projectTasks = tasks.filter(t => t.projectId === projectId);
-        const totalSeconds = projectTasks.reduce((acc, t) => acc + (t.timeSpent || 0), 0);
-        const hrs = Math.floor(totalSeconds / 3600);
-        const mins = Math.floor((totalSeconds % 3600) / 60);
+    const formatTime = (seconds) => {
+        const hrs = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
         if (hrs > 0) return `${hrs}h ${mins}m`;
         return `${mins}m`;
     };
 
-    return (
-        <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                    <ArrowLeft size={24} color="#f8fafc" />
-                </TouchableOpacity>
-                <Text style={styles.title}>Projects</Text>
-                <TouchableOpacity onPress={() => openProjectModal()} style={styles.addButton}>
-                    <Plus size={24} color="#fff" />
-                </TouchableOpacity>
-            </View>
+    const renderRightActions = () => {
+        return (
+            <View style={styles.deleteActionPlaceholder} />
+        );
+    };
 
-            <FlatList
-                data={projects}
-                keyExtractor={(item) => item.id}
-                renderItem={({ item }) => (
-                    <View style={styles.projectListItem}>
-                        <View style={styles.projectListInfo}>
-                            <View style={[styles.projectDot, { backgroundColor: item.color }]} />
-                            <Text style={styles.projectListText}>{item.name}</Text>
+    const ProjectItem = ({ item, onOpenModal, onToggleArchive, onDelete }) => {
+        const swipeableRef = useRef(null);
+
+        return (
+            <Swipeable
+                ref={swipeableRef}
+                renderRightActions={renderRightActions}
+                onSwipeableOpen={(direction) => {
+                    if (direction === 'right') {
+                        swipeableRef.current?.close();
+                        onDelete(item.id);
+                    }
+                }}
+            >
+                <TouchableOpacity
+                    style={styles.projectListItem}
+                    onPress={() => onOpenModal(item)}
+                >
+                    <View style={styles.projectListInfo}>
+                        <View style={[styles.projectDot, { backgroundColor: item.color }]} />
+                        <View style={styles.projectTextContainer}>
                             <Text style={styles.projectListText}>{item.name}</Text>
                             {item.archived && <Text style={styles.archivedBadge}>Archived</Text>}
-                            <View style={styles.timeBadge}>
-                                <Clock size={12} color="#94a3b8" />
-                                <Text style={styles.timeBadgeText}>{getProjectTotalTime(item.id)}</Text>
-                            </View>
-                        </View>
-                        <View style={styles.projectListActions}>
-                            <TouchableOpacity onPress={() => toggleProjectArchive(item.id)} style={{ marginRight: 15 }}>
-                                <Archive size={20} color={item.archived ? "#f59e0b" : "#64748b"} />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => openProjectModal(item)} style={{ marginRight: 15 }}>
-                                <Edit2 size={20} color="#64748b" />
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={() => deleteProject(item.id)}>
-                                <Trash2 size={20} color="#ef4444" />
-                            </TouchableOpacity>
                         </View>
                     </View>
-                )}
-                style={styles.projectList}
-                contentContainerStyle={{ paddingBottom: 100 }}
-            />
+                    <View style={styles.projectListRight}>
+                        <View style={styles.timeBadge}>
+                            <Clock size={12} color="#94a3b8" />
+                            <Text style={styles.timeBadgeText}>{formatTime(tasks.filter(t => t.projectId === item.id).reduce((acc, t) => acc + (t.timeSpent || 0), 0))}</Text>
+                        </View>
+                        <TouchableOpacity
+                            onPress={(e) => {
+                                e.stopPropagation();
+                                onToggleArchive(item.id);
+                            }}
+                            style={styles.archiveButton}
+                        >
+                            {item.archived ? <EyeOff size={20} color="#f59e0b" /> : <Eye size={20} color="#64748b" />}
+                        </TouchableOpacity>
+                    </View>
+                </TouchableOpacity>
+            </Swipeable>
+        );
+    };
 
-            <Modal
-                visible={isProjectModalVisible}
-                animationType="slide"
-                transparent={true}
-                onRequestClose={() => setIsProjectModalVisible(false)}
-            >
-                <KeyboardAvoidingView
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    style={styles.modalOverlay}
+    return (
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <SafeAreaView style={styles.container}>
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                        <ArrowLeft size={24} color="#f8fafc" />
+                    </TouchableOpacity>
+                    <Text style={styles.title}>Projects</Text>
+                    <TouchableOpacity onPress={() => openProjectModal()} style={styles.addButton}>
+                        <Plus size={24} color="#fff" />
+                    </TouchableOpacity>
+                </View>
+
+                <FlatList
+                    data={projects}
+                    keyExtractor={(item) => item.id}
+                    renderItem={({ item }) => (
+                        <ProjectItem
+                            item={item}
+                            onOpenModal={openProjectModal}
+                            onToggleArchive={toggleProjectArchive}
+                            onDelete={deleteProject}
+                        />
+                    )}
+                    style={styles.projectList}
+                    contentContainerStyle={{ paddingBottom: 100 }}
+                />
+
+                <Modal
+                    visible={isProjectModalVisible}
+                    animationType="slide"
+                    transparent={true}
+                    onRequestClose={() => setIsProjectModalVisible(false)}
                 >
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>{editingProject ? 'Edit Project' : 'New Project'}</Text>
-                            <TouchableOpacity onPress={() => setIsProjectModalVisible(false)}>
-                                <X size={24} color="#94a3b8" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={styles.projectForm}>
-                            <TextInput
-                                style={[styles.input, { marginBottom: 10 }]}
-                                placeholder="Project Name"
-                                placeholderTextColor="#64748b"
-                                value={projectName}
-                                onChangeText={setProjectName}
-                            />
-                            <View style={styles.colorSelector}>
-                                {['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'].map((color) => (
-                                    <TouchableOpacity
-                                        key={color}
-                                        style={[
-                                            styles.colorOption,
-                                            { backgroundColor: color },
-                                            projectColor === color && styles.colorOptionSelected,
-                                        ]}
-                                        onPress={() => setProjectColor(color)}
-                                    />
-                                ))}
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        style={styles.modalOverlay}
+                    >
+                        <View style={styles.modalContent}>
+                            <View style={styles.modalHeader}>
+                                <Text style={styles.modalTitle}>{editingProject ? 'Edit Project' : 'New Project'}</Text>
+                                <TouchableOpacity onPress={() => setIsProjectModalVisible(false)}>
+                                    <X size={24} color="#94a3b8" />
+                                </TouchableOpacity>
                             </View>
-                            <TouchableOpacity style={styles.saveButton} onPress={handleSaveProject}>
-                                <Text style={styles.saveButtonText}>
-                                    {editingProject ? 'Update Project' : 'Add Project'}
-                                </Text>
-                            </TouchableOpacity>
+
+                            <View style={styles.projectForm}>
+                                <TextInput
+                                    style={[styles.input, { marginBottom: 10 }]}
+                                    placeholder="Project Name"
+                                    placeholderTextColor="#64748b"
+                                    value={projectName}
+                                    onChangeText={setProjectName}
+                                />
+                                <View style={styles.colorSelector}>
+                                    {['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'].map((color) => (
+                                        <TouchableOpacity
+                                            key={color}
+                                            style={[
+                                                styles.colorOption,
+                                                { backgroundColor: color },
+                                                projectColor === color && styles.colorOptionSelected,
+                                            ]}
+                                            onPress={() => setProjectColor(color)}
+                                        />
+                                    ))}
+                                </View>
+                                <TouchableOpacity style={styles.saveButton} onPress={handleSaveProject}>
+                                    <Text style={styles.saveButtonText}>
+                                        {editingProject ? 'Update Project' : 'Add Project'}
+                                    </Text>
+                                </TouchableOpacity>
+                            </View>
                         </View>
-                    </View>
-                </KeyboardAvoidingView>
-            </Modal>
-        </SafeAreaView>
+                    </KeyboardAvoidingView>
+                </Modal>
+            </SafeAreaView>
+        </GestureHandlerRootView>
     );
 }
 
@@ -239,15 +276,35 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
     },
     projectListItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
         backgroundColor: '#1e293b',
-        padding: 16,
         borderRadius: 16,
         marginBottom: 12,
         borderWidth: 1,
         borderColor: '#334155',
+        overflow: 'hidden',
+    },
+    projectListContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: 16,
+    },
+    deleteActionPlaceholder: {
+        width: 100,
+        backgroundColor: 'transparent',
+    },
+    projectTextContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    projectListRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    archiveButton: {
+        padding: 4,
     },
     projectListInfo: {
         flexDirection: 'row',
