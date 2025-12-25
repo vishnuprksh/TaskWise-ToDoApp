@@ -17,7 +17,7 @@
     },
     "android": {
       "package": "com.BrightTomorrow.TaskWise",
-      "versionCode": 6,
+      "versionCode": 7,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.jpg",
         "backgroundColor": "#ffffff"
