@@ -81,8 +81,11 @@ export const AppProvider = ({ children }) => {
     const signOut = async () => {
         try {
             await AuthService.signOut();
-            // Optional: Clear local data or keep it? 
-            // Usually keep it, but maybe warn user.
+            // Clear local data on sign out
+            setTasks([]);
+            setProjects([...DEFAULT_PROJECTS].sort((a, b) => a.name.localeCompare(b.name)));
+            await AsyncStorage.removeItem(STORAGE_KEY_TASKS);
+            await AsyncStorage.removeItem(STORAGE_KEY_PROJECTS);
         } catch (error) {
             console.error("Sign out failed", error);
         }
