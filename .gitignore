@@ -42,3 +42,7 @@ yarn-error.*
 
 # build artifacts
 *.apk
+
+# Firebase configuration
+google-services.json
+android/app/google-services.json
