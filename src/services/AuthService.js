@@ -2,8 +2,11 @@ import {
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
     signOut as firebaseSignOut,
-    onAuthStateChanged as firebaseOnAuthStateChanged
+    onAuthStateChanged as firebaseOnAuthStateChanged,
+    GoogleAuthProvider,
+    signInWithCredential
 } from 'firebase/auth';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth } from './FirebaseConfig';
 
 export const signInWithEmail = async (email, password) => {
@@ -40,8 +43,34 @@ export const getCurrentUser = () => {
     return auth.currentUser;
 };
 
-// Placeholder for Google Sign-in if the user wants to implement it via Web flow
+// Google Sign-In Implementation
 export const signInWithGoogle = async () => {
-    console.warn("Google Sign-In via Native is disabled for Expo Go. Use Email/Password for now.");
-    throw new Error("Google Sign-In not supported in Expo Go with JS SDK without additional setup.");
+    try {
+        // 1. Check if Play Services are available
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+
+        // 2. Sign in with Google
+        const userInfo = await GoogleSignin.signIn();
+
+        // 3. Get the ID token
+        const { idToken } = await GoogleSignin.getTokens();
+
+        if (!idToken) {
+            throw new Error('No ID token found');
+        }
+
+        // 4. Create a Firebase credential with the token
+        const googleCredential = GoogleAuthProvider.credential(idToken);
+
+        // 5. Sign-in the user with the credential
+        return await signInWithCredential(auth, googleCredential);
+    } catch (error) {
+        console.error('Google Sign-In Error:', error);
+        throw error;
+    }
 };
+
+// Configure Google Sign-In
+GoogleSignin.configure({
+    webClientId: '658595013531-1kqbfqcspb9lc6eq7ac8lnqjba267lfe.apps.googleusercontent.com',
+});
