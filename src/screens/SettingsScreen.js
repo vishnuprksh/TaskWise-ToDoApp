@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, TextInput, Alert } from 'react-native';
 import { useApp } from '../context/AppContext';
-import { LogOut, RefreshCw, User, ArrowLeft } from 'lucide-react-native';
+import { LogOut, RefreshCw, User, ArrowLeft, Eye, EyeOff } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SettingsScreen({ navigation }) {
@@ -9,6 +9,7 @@ export default function SettingsScreen({ navigation }) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isSignUp, setIsSignUp] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
 
     const handleEmailAuth = async () => {
@@ -74,14 +75,26 @@ export default function SettingsScreen({ navigation }) {
                                 autoCapitalize="none"
                                 keyboardType="email-address"
                             />
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Password"
-                                placeholderTextColor="#64748b"
-                                value={password}
-                                onChangeText={setPassword}
-                                secureTextEntry
-                            />
+                            <View style={styles.passwordContainer}>
+                                <TextInput
+                                    style={styles.passwordInput}
+                                    placeholder="Password"
+                                    placeholderTextColor="#64748b"
+                                    value={password}
+                                    onChangeText={setPassword}
+                                    secureTextEntry={!showPassword}
+                                />
+                                <TouchableOpacity
+                                    onPress={() => setShowPassword(!showPassword)}
+                                    style={styles.eyeIcon}
+                                >
+                                    {showPassword ? (
+                                        <EyeOff size={20} color="#64748b" />
+                                    ) : (
+                                        <Eye size={20} color="#64748b" />
+                                    )}
+                                </TouchableOpacity>
+                            </View>
 
                             <TouchableOpacity
                                 onPress={handleEmailAuth}
@@ -296,6 +309,24 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#334155',
         marginBottom: 12,
+    },
+    passwordContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#0f172a',
+        borderWidth: 1,
+        borderColor: '#334155',
+        borderRadius: 12,
+        marginBottom: 12,
+    },
+    passwordInput: {
+        flex: 1,
+        padding: 16,
+        color: '#f8fafc',
+        fontSize: 16,
+    },
+    eyeIcon: {
+        padding: 16,
     },
     emailButton: {
         backgroundColor: '#6366f1',

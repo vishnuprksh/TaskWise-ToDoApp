@@ -102,7 +102,9 @@ export default function HomeScreen({ navigation }) {
         } else {
             setEditingTask(null);
             setTaskText('');
-            setSelectedProject(projects.length > 0 ? projects[0].id : null);
+            // Use the selected filter project as default, otherwise fall back to the first project
+            const defaultProjectId = selectedFilterProject || (projects.length > 0 ? projects[0].id : null);
+            setSelectedProject(defaultProjectId);
             setProjectSearchText('');
             setAttributes({
                 easiness: 'medium',
