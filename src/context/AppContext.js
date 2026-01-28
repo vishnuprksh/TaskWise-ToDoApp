@@ -2,7 +2,9 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as AuthService from '../services/AuthService';
 import * as SyncService from '../services/SyncService';
+import * as NotificationService from '../services/NotificationService';
 import { calculatePriorityScore } from '../utils/priority';
+import { addMinutes, subMinutes, parseISO } from 'date-fns';
 
 const AppContext = createContext();
 
@@ -22,6 +24,7 @@ export const AppProvider = ({ children }) => {
     const [isSyncing, setIsSyncing] = useState(false);
 
     useEffect(() => {
+        NotificationService.registerForPushNotificationsAsync();
         loadData();
         const subscriber = AuthService.onAuthStateChanged(onAuthStateChanged);
         return subscriber; // unsubscribe on unmount
@@ -208,6 +211,67 @@ export const AppProvider = ({ children }) => {
         updateTasks(newTasks);
     };
 
+    const updateTaskSchedule = async (taskId, date, duration = 60) => {
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        // Cancel existing notification if any
+        if (task.notificationId) {
+            await NotificationService.cancelNotification(task.notificationId);
+        }
+
+        // Schedule new notification 5 minutes before
+        let notificationId = null;
+        if (date) {
+            const triggerDate = subMinutes(new Date(date), 5);
+            // Only schedule if trigger date is in future
+            if (triggerDate > new Date()) {
+                notificationId = await NotificationService.scheduleEventNotification(
+                    "Upcoming Task",
+                    `"${task.text}" starts in 5 minutes.`,
+                    triggerDate
+                );
+            }
+        }
+
+        const newTasks = tasks.map(t => {
+            if (t.id === taskId) {
+                return {
+                    ...t,
+                    scheduledAt: date ? date.toISOString() : null,
+                    duration,
+                    notificationId,
+                    isEvent: !!date
+                };
+            }
+            return t;
+        });
+        updateTasks(newTasks);
+    };
+
+    const cancelTaskSchedule = async (taskId) => {
+        const task = tasks.find(t => t.id === taskId);
+        if (!task) return;
+
+        if (task.notificationId) {
+            await NotificationService.cancelNotification(task.notificationId);
+        }
+
+        const newTasks = tasks.map(t => {
+            if (t.id === taskId) {
+                return {
+                    ...t,
+                    scheduledAt: null,
+                    duration: 60,
+                    notificationId: null,
+                    isEvent: false
+                };
+            }
+            return t;
+        });
+        updateTasks(newTasks);
+    };
+
     return (
         <AppContext.Provider
             value={{
@@ -223,6 +287,8 @@ export const AppProvider = ({ children }) => {
                 updateTasks,
                 updateProjects,
                 updateTaskTime,
+                updateTaskSchedule,
+                cancelTaskSchedule,
                 calculatePriorityScore,
             }}
         >

@@ -17,6 +17,12 @@ import {
 } from 'lucide-react-native';
 import { useApp } from '../context/AppContext';
 import { formatTime } from '../utils/time';
+import { useKeepAwake } from 'expo-keep-awake';
+
+function KeepAwakeWrapper() {
+    useKeepAwake();
+    return null;
+}
 
 const { width } = Dimensions.get('window');
 const TIMER_DURATION = 25 * 60; // 25 minutes
@@ -120,6 +126,7 @@ export default function TimerScreen({ navigation, route }) {
                         <RotateCcw size={24} color="#94a3b8" />
                     </TouchableOpacity>
                 </View>
+                {isActive && <KeepAwakeWrapper />}
             </View>
         </SafeAreaView>
     );

@@ -20,15 +20,19 @@ import {
     Plus,
     ChevronDown,
     ChevronRight,
+    CalendarRange,
 } from 'lucide-react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useApp } from '../context/AppContext';
 import TaskItem from '../components/TaskItem';
 import TaskForm from '../components/TaskForm';
+import ScheduleModal from '../components/ScheduleModal';
 
 export default function HomeScreen({ navigation }) {
-    const { tasks, projects, updateTasks, calculatePriorityScore } = useApp();
+    const { tasks, projects, updateTasks, calculatePriorityScore, updateTaskSchedule } = useApp();
     const [isTaskModalVisible, setIsTaskModalVisible] = useState(false);
+    const [isScheduleModalVisible, setIsScheduleModalVisible] = useState(false);
+    const [taskToSchedule, setTaskToSchedule] = useState(null);
     const [projectSearchText, setProjectSearchText] = useState('');
     const [selectedFilterProject, setSelectedFilterProject] = useState(null); // null means 'All'
     const [isFinishedExpanded, setIsFinishedExpanded] = useState(false);
@@ -121,6 +125,17 @@ export default function HomeScreen({ navigation }) {
         Keyboard.dismiss();
     };
 
+    const handleOpenSchedule = (task) => {
+        setTaskToSchedule(task);
+        setIsScheduleModalVisible(true);
+    };
+
+    const handleScheduleTask = (taskId, date) => {
+        updateTaskSchedule(taskId, date);
+        setIsScheduleModalVisible(false);
+        setTaskToSchedule(null);
+    };
+
     const getProject = (id) => projects.find((p) => p.id === id);
 
     const filteredTasks = tasks.filter(t => {
@@ -149,6 +164,9 @@ export default function HomeScreen({ navigation }) {
                         <Text style={styles.subtitle}>Stay organized, stay ahead.</Text>
                     </View>
                     <View style={styles.headerActions}>
+                        <TouchableOpacity onPress={() => navigation.navigate('Calendar')} style={styles.headerButton}>
+                            <CalendarRange size={20} color="#fff" />
+                        </TouchableOpacity>
                         <TouchableOpacity onPress={() => navigation.navigate('Projects')} style={styles.headerButton}>
                             <Briefcase size={20} color="#fff" />
                         </TouchableOpacity>
@@ -203,6 +221,7 @@ export default function HomeScreen({ navigation }) {
                                     onToggle={toggleTask}
                                     onNavigateTimer={(task) => navigation.navigate('Timer', { task })}
                                     onDelete={deleteTask}
+                                    onSchedule={handleOpenSchedule}
                                     fadeAnim={fadeAnim}
                                 />
                             </View>
@@ -284,6 +303,12 @@ export default function HomeScreen({ navigation }) {
                         />
                     </KeyboardAvoidingView>
                 </Modal>
+                <ScheduleModal
+                    visible={isScheduleModalVisible}
+                    onClose={() => setIsScheduleModalVisible(false)}
+                    onSchedule={handleScheduleTask}
+                    task={taskToSchedule}
+                />
             </SafeAreaView>
         </GestureHandlerRootView>
     );

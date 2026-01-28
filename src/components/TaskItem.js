@@ -7,10 +7,11 @@ import {
     PlayCircle,
     Clock,
     Flag,
+    CalendarRange,
 } from 'lucide-react-native';
 import { formatTime } from '../utils/time';
 
-const TaskItem = ({ item, project, onOpenModal, onToggle, onNavigateTimer, onDelete, fadeAnim }) => {
+const TaskItem = ({ item, project, onOpenModal, onToggle, onNavigateTimer, onDelete, onSchedule, fadeAnim }) => {
     const swipeableRef = useRef(null);
 
     const renderRightActions = (progress, dragX) => {
@@ -19,10 +20,21 @@ const TaskItem = ({ item, project, onOpenModal, onToggle, onNavigateTimer, onDel
         );
     };
 
+    const renderLeftActions = (progress, dragX) => {
+        return (
+            <View style={styles.scheduleActionPlaceholder}>
+                <View style={styles.scheduleActionIcon}>
+                    <CalendarRange size={24} color="#6366f1" />
+                </View>
+            </View>
+        );
+    };
+
     return (
         <Swipeable
             ref={swipeableRef}
             renderRightActions={renderRightActions}
+            renderLeftActions={renderLeftActions}
             onSwipeableOpen={(direction) => {
                 if (direction === 'right') {
                     swipeableRef.current?.close();
@@ -34,6 +46,9 @@ const TaskItem = ({ item, project, onOpenModal, onToggle, onNavigateTimer, onDel
                             { text: "Delete", style: "destructive", onPress: () => onDelete(item.id) }
                         ]
                     );
+                } else if (direction === 'left') {
+                    swipeableRef.current?.close();
+                    onSchedule(item);
                 }
             }}
         >
@@ -96,6 +111,22 @@ const styles = StyleSheet.create({
     deleteActionPlaceholder: {
         width: 100,
         backgroundColor: 'transparent',
+    },
+    scheduleActionPlaceholder: {
+        width: 100,
+        backgroundColor: 'transparent',
+        justifyContent: 'center',
+        paddingLeft: 20,
+    },
+    scheduleActionIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#1e293b',
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#334155',
     },
     taskContainer: {
         backgroundColor: '#1e293b',
