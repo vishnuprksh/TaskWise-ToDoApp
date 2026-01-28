@@ -1,29 +1,35 @@
-import firestore from '@react-native-firebase/firestore';
-import auth from '@react-native-firebase/auth';
+import {
+    collection,
+    doc,
+    getDocs,
+    writeBatch,
+    setDoc,
+    deleteDoc
+} from 'firebase/firestore';
+import { db, auth } from './FirebaseConfig';
 
 const getUserDocRef = () => {
-    const user = auth().currentUser;
+    const user = auth.currentUser;
     if (!user) return null;
-    return firestore().collection('users').doc(user.uid);
+    return doc(db, 'users', user.uid);
 };
 
 export const syncData = async (localTasks, localProjects) => {
-    const userDoc = getUserDocRef();
-    if (!userDoc) return { tasks: localTasks, projects: localProjects };
+    const userDocRef = getUserDocRef();
+    if (!userDocRef) return { tasks: localTasks, projects: localProjects };
 
     try {
         // 1. Get cloud data
-        const tasksSnapshot = await userDoc.collection('tasks').get();
-        const projectsSnapshot = await userDoc.collection('projects').get();
+        const tasksSnapshot = await getDocs(collection(userDocRef, 'tasks'));
+        const projectsSnapshot = await getDocs(collection(userDocRef, 'projects'));
 
         const cloudTasks = tasksSnapshot.docs.map(doc => doc.data());
         const cloudProjects = projectsSnapshot.docs.map(doc => doc.data());
 
         // 2. Merge logic (Simple merge: Cloud wins if conflict, or union)
-        // For now, let's just use a simple map to merge by ID
         const mergedTasksMap = new Map();
         localTasks.forEach(t => mergedTasksMap.set(t.id, t));
-        cloudTasks.forEach(t => mergedTasksMap.set(t.id, t)); // Cloud overwrites local for now
+        cloudTasks.forEach(t => mergedTasksMap.set(t.id, t));
 
         const mergedProjectsMap = new Map();
         localProjects.forEach(p => mergedProjectsMap.set(p.id, p));
@@ -33,16 +39,16 @@ export const syncData = async (localTasks, localProjects) => {
         const mergedProjects = Array.from(mergedProjectsMap.values());
 
         // 3. Upload merged data back to cloud (batch write)
-        const batch = firestore().batch();
+        const batch = writeBatch(db);
 
         mergedTasks.forEach(task => {
-            const docRef = userDoc.collection('tasks').doc(task.id);
-            batch.set(docRef, task);
+            const taskDocRef = doc(userDocRef, 'tasks', task.id);
+            batch.set(taskDocRef, task);
         });
 
         mergedProjects.forEach(project => {
-            const docRef = userDoc.collection('projects').doc(project.id);
-            batch.set(docRef, project);
+            const projectDocRef = doc(userDocRef, 'projects', project.id);
+            batch.set(projectDocRef, project);
         });
 
         await batch.commit();
@@ -56,40 +62,40 @@ export const syncData = async (localTasks, localProjects) => {
 };
 
 export const saveTaskToCloud = async (task) => {
-    const userDoc = getUserDocRef();
-    if (!userDoc) return;
+    const userDocRef = getUserDocRef();
+    if (!userDocRef) return;
     try {
-        await userDoc.collection('tasks').doc(task.id).set(task);
+        await setDoc(doc(userDocRef, 'tasks', task.id), task);
     } catch (error) {
         console.error('Error saving task to cloud:', error);
     }
 };
 
 export const saveProjectToCloud = async (project) => {
-    const userDoc = getUserDocRef();
-    if (!userDoc) return;
+    const userDocRef = getUserDocRef();
+    if (!userDocRef) return;
     try {
-        await userDoc.collection('projects').doc(project.id).set(project);
+        await setDoc(doc(userDocRef, 'projects', project.id), project);
     } catch (error) {
         console.error('Error saving project to cloud:', error);
     }
 };
 
 export const deleteTaskFromCloud = async (taskId) => {
-    const userDoc = getUserDocRef();
-    if (!userDoc) return;
+    const userDocRef = getUserDocRef();
+    if (!userDocRef) return;
     try {
-        await userDoc.collection('tasks').doc(taskId).delete();
+        await deleteDoc(doc(userDocRef, 'tasks', taskId));
     } catch (error) {
         console.error('Error deleting task from cloud:', error);
     }
 };
 
 export const deleteProjectFromCloud = async (projectId) => {
-    const userDoc = getUserDocRef();
-    if (!userDoc) return;
+    const userDocRef = getUserDocRef();
+    if (!userDocRef) return;
     try {
-        await userDoc.collection('projects').doc(projectId).delete();
+        await deleteDoc(doc(userDocRef, 'projects', projectId));
     } catch (error) {
         console.error('Error deleting project from cloud:', error);
     }

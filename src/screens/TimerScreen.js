@@ -16,6 +16,7 @@ import {
     Clock,
 } from 'lucide-react-native';
 import { useApp } from '../context/AppContext';
+import { formatTime } from '../utils/time';
 
 const { width } = Dimensions.get('window');
 const TIMER_DURATION = 25 * 60; // 25 minutes
@@ -67,17 +68,10 @@ export default function TimerScreen({ navigation, route }) {
         progressAnim.setValue(0);
     };
 
-    const formatTime = (seconds) => {
+    const formatCountdown = (seconds) => {
         const mins = Math.floor(seconds / 60);
         const secs = seconds % 60;
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-    };
-
-    const formatTotalTime = (seconds) => {
-        const hrs = Math.floor(seconds / 3600);
-        const mins = Math.floor((seconds % 3600) / 60);
-        if (hrs > 0) return `${hrs}h ${mins}m`;
-        return `${mins}m`;
     };
 
     const progressWidth = progressAnim.interpolate({
@@ -102,13 +96,13 @@ export default function TimerScreen({ navigation, route }) {
                     <View style={styles.totalTimeContainer}>
                         <Clock size={16} color="#94a3b8" />
                         <Text style={styles.totalTimeText}>
-                            Total Focus: {formatTotalTime(task.timeSpent || 0)}
+                            Total Focus: {formatTime(task.timeSpent || 0)}
                         </Text>
                     </View>
                 </View>
 
                 <View style={styles.timerContainer}>
-                    <Text style={styles.timerText}>{formatTime(timeLeft)}</Text>
+                    <Text style={styles.timerText}>{formatCountdown(timeLeft)}</Text>
                     <View style={styles.progressBarContainer}>
                         <Animated.View style={[styles.progressBar, { width: progressWidth }]} />
                     </View>

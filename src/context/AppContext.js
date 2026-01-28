@@ -2,25 +2,12 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as AuthService from '../services/AuthService';
 import * as SyncService from '../services/SyncService';
-import { requestWidgetUpdate } from 'react-native-android-widget';
+import { calculatePriorityScore } from '../utils/priority';
 
 const AppContext = createContext();
 
 const STORAGE_KEY_TASKS = '@taskwise_tasks';
 const STORAGE_KEY_PROJECTS = '@taskwise_projects';
-
-const PRIORITY_WEIGHTS = {
-    easiness: 0.4,
-    importance: 0.3,
-    emergency: 0.2,
-    interest: 0.1,
-};
-
-const ATTRIBUTE_VALUES = {
-    low: 1,
-    medium: 2,
-    high: 3,
-};
 
 const DEFAULT_PROJECTS = [
     { id: '1', name: 'Personal', color: '#3b82f6', archived: false },
@@ -78,6 +65,22 @@ export const AppProvider = ({ children }) => {
         }
     };
 
+    const signInWithEmail = async (email, password) => {
+        try {
+            await AuthService.signInWithEmail(email, password);
+        } catch (error) {
+            throw error;
+        }
+    };
+
+    const signUpWithEmail = async (email, password) => {
+        try {
+            await AuthService.signUpWithEmail(email, password);
+        } catch (error) {
+            throw error;
+        }
+    };
+
     const signOut = async () => {
         try {
             await AuthService.signOut();
@@ -88,28 +91,6 @@ export const AppProvider = ({ children }) => {
             await AsyncStorage.removeItem(STORAGE_KEY_PROJECTS);
         } catch (error) {
             console.error("Sign out failed", error);
-        }
-    };
-
-    const calculatePriorityScore = (attrs) => {
-        if (!attrs) return 0;
-        try {
-            const easiness = ATTRIBUTE_VALUES[attrs.easiness] || 1;
-            const importance = ATTRIBUTE_VALUES[attrs.importance] || 1;
-            const emergency = ATTRIBUTE_VALUES[attrs.emergency] || 1;
-            const interest = ATTRIBUTE_VALUES[attrs.interest] || 1;
-
-            const score =
-                easiness * PRIORITY_WEIGHTS.easiness +
-                importance * PRIORITY_WEIGHTS.importance +
-                emergency * PRIORITY_WEIGHTS.emergency +
-                interest * PRIORITY_WEIGHTS.interest;
-
-            if (isNaN(score)) return 0;
-            return parseFloat(score.toFixed(2));
-        } catch (e) {
-            console.error('Error calculating priority', e);
-            return 0;
         }
     };
 
@@ -193,7 +174,6 @@ export const AppProvider = ({ children }) => {
 
         setTasks(newTasks);
         saveTasks(newTasks);
-        requestWidgetUpdate({ widgetName: 'TaskWidget' });
     };
 
     const updateProjects = (newProjects) => {
@@ -216,7 +196,6 @@ export const AppProvider = ({ children }) => {
         const sortedProjects = [...newProjects].sort((a, b) => a.name.localeCompare(b.name));
         setProjects(sortedProjects);
         saveProjects(sortedProjects);
-        requestWidgetUpdate({ widgetName: 'TaskWidget' });
     };
 
     const updateTaskTime = (taskId, secondsToAdd) => {
@@ -237,6 +216,8 @@ export const AppProvider = ({ children }) => {
                 user,
                 isSyncing,
                 signIn,
+                signInWithEmail,
+                signUpWithEmail,
                 signOut,
                 syncNow,
                 updateTasks,

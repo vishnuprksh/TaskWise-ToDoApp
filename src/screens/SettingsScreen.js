@@ -1,11 +1,42 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, TextInput, Alert } from 'react-native';
 import { useApp } from '../context/AppContext';
 import { LogOut, RefreshCw, User, ArrowLeft } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SettingsScreen({ navigation }) {
-    const { user, signIn, signOut, syncNow, isSyncing } = useApp();
+    const { user, signIn, signInWithEmail, signUpWithEmail, signOut, syncNow, isSyncing } = useApp();
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [isSignUp, setIsSignUp] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleEmailAuth = async () => {
+        if (!email || !password) {
+            Alert.alert('Error', 'Please enter both email and password');
+            return;
+        }
+        setIsLoading(true);
+        try {
+            if (isSignUp) {
+                await signUpWithEmail(email, password);
+            } else {
+                await signInWithEmail(email, password);
+            }
+        } catch (error) {
+            Alert.alert('Authentication Failed', error.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleGoogleSignIn = async () => {
+        try {
+            await signIn();
+        } catch (error) {
+            // Error is handled in context/service usually, but we can alert here
+        }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -32,7 +63,54 @@ export default function SettingsScreen({ navigation }) {
                 ) : (
                     <View style={styles.signInContainer}>
                         <Text style={styles.signInText}>Sign in to sync your tasks across devices.</Text>
-                        <TouchableOpacity onPress={signIn} style={styles.googleButton}>
+
+                        <View style={styles.authForm}>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Email"
+                                placeholderTextColor="#64748b"
+                                value={email}
+                                onChangeText={setEmail}
+                                autoCapitalize="none"
+                                keyboardType="email-address"
+                            />
+                            <TextInput
+                                style={styles.input}
+                                placeholder="Password"
+                                placeholderTextColor="#64748b"
+                                value={password}
+                                onChangeText={setPassword}
+                                secureTextEntry
+                            />
+
+                            <TouchableOpacity
+                                onPress={handleEmailAuth}
+                                style={styles.emailButton}
+                                disabled={isLoading}
+                            >
+                                {isLoading ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <Text style={styles.emailButtonText}>
+                                        {isSignUp ? 'Create Account' : 'Sign In'}
+                                    </Text>
+                                )}
+                            </TouchableOpacity>
+
+                            <TouchableOpacity onPress={() => setIsSignUp(!isSignUp)} style={styles.switchButton}>
+                                <Text style={styles.switchButtonText}>
+                                    {isSignUp ? 'Already have an account? Sign In' : "Don't have an account? Sign Up"}
+                                </Text>
+                            </TouchableOpacity>
+
+                            <View style={styles.divider}>
+                                <View style={styles.dividerLine} />
+                                <Text style={styles.dividerText}>OR</Text>
+                                <View style={styles.dividerLine} />
+                            </View>
+                        </View>
+
+                        <TouchableOpacity onPress={handleGoogleSignIn} style={styles.googleButton}>
                             <Image
                                 source={{ uri: 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg' }}
                                 style={styles.googleIcon}
@@ -204,5 +282,56 @@ const styles = StyleSheet.create({
         color: '#334155',
         fontSize: 12,
         fontWeight: '500',
+    },
+    authForm: {
+        width: '100%',
+        marginBottom: 20,
+    },
+    input: {
+        backgroundColor: '#0f172a',
+        padding: 16,
+        borderRadius: 12,
+        color: '#f8fafc',
+        fontSize: 16,
+        borderWidth: 1,
+        borderColor: '#334155',
+        marginBottom: 12,
+    },
+    emailButton: {
+        backgroundColor: '#6366f1',
+        padding: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    emailButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '700',
+    },
+    switchButton: {
+        marginTop: 16,
+        alignItems: 'center',
+    },
+    switchButtonText: {
+        color: '#6366f1',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    divider: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: 20,
+    },
+    dividerLine: {
+        flex: 1,
+        height: 1,
+        backgroundColor: '#334155',
+    },
+    dividerText: {
+        color: '#64748b',
+        paddingHorizontal: 10,
+        fontSize: 12,
+        fontWeight: '600',
     },
 });
