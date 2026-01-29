@@ -1,16 +1,23 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, ActivityIndicator, TextInput, Alert } from 'react-native';
 import { useApp } from '../context/AppContext';
-import { LogOut, RefreshCw, User, ArrowLeft, Eye, EyeOff } from 'lucide-react-native';
+import { LogOut, RefreshCw, User, ArrowLeft, Eye, EyeOff, MessageSquare } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { db } from '../services/FirebaseConfig';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import * as Application from 'expo-application';
+import { Platform, Modal } from 'react-native';
 
 export default function SettingsScreen({ navigation }) {
-    const { user, signIn, signInWithEmail, signUpWithEmail, signOut, syncNow, isSyncing } = useApp();
+    const { user, signIn, signInWithEmail, signUpWithEmail, sendPasswordReset, signOut, syncNow, isSyncing } = useApp();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [isSignUp, setIsSignUp] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+    const [feedbackMessage, setFeedbackMessage] = useState('');
+    const [isSendingFeedback, setIsSendingFeedback] = useState(false);
 
     const handleEmailAuth = async () => {
         if (!email || !password) {
@@ -28,6 +35,48 @@ export default function SettingsScreen({ navigation }) {
             Alert.alert('Authentication Failed', error.message);
         } finally {
             setIsLoading(false);
+        }
+    };
+
+    const handlePasswordReset = async () => {
+        if (!email) {
+            Alert.alert('Error', 'Please enter your email address to reset password');
+            return;
+        }
+        setIsLoading(true);
+        try {
+            await sendPasswordReset(email);
+            Alert.alert('Success', 'Password reset email sent');
+        } catch (error) {
+            Alert.alert('Error', error.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleFeedbackSubmit = async () => {
+        if (!feedbackMessage.trim()) {
+            Alert.alert('Error', 'Please enter a message');
+            return;
+        }
+        setIsSendingFeedback(true);
+        try {
+            await addDoc(collection(db, 'feedback'), {
+                message: feedbackMessage,
+                userId: user ? user.uid : null,
+                userEmail: user ? user.email : null,
+                appVersion: Application.nativeApplicationVersion || '1.0.0',
+                platform: Platform.OS,
+                createdAt: serverTimestamp()
+            });
+            Alert.alert('Success', 'Feedback sent successfully!');
+            setFeedbackMessage('');
+            setShowFeedbackModal(false);
+        } catch (error) {
+            console.error(error);
+            Alert.alert('Error', 'Failed to send feedback');
+        } finally {
+            setIsSendingFeedback(false);
         }
     };
 
@@ -96,6 +145,13 @@ export default function SettingsScreen({ navigation }) {
                                 </TouchableOpacity>
                             </View>
 
+
+                            {!isSignUp && (
+                                <TouchableOpacity onPress={handlePasswordReset} style={styles.forgotPasswordButton}>
+                                    <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                                </TouchableOpacity>
+                            )}
+
                             <TouchableOpacity
                                 onPress={handleEmailAuth}
                                 style={styles.emailButton}
@@ -134,29 +190,77 @@ export default function SettingsScreen({ navigation }) {
                 )}
             </View>
 
-            {user && (
-                <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Sync</Text>
-                    <TouchableOpacity onPress={syncNow} style={styles.syncButton} disabled={isSyncing}>
-                        {isSyncing ? (
-                            <ActivityIndicator color="#ffffff" />
-                        ) : (
-                            <RefreshCw size={20} color="#ffffff" />
-                        )}
-                        <Text style={styles.syncButtonText}>
-                            {isSyncing ? 'Syncing...' : 'Sync Now'}
+            {
+                user && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Sync</Text>
+                        <TouchableOpacity onPress={syncNow} style={styles.syncButton} disabled={isSyncing}>
+                            {isSyncing ? (
+                                <ActivityIndicator color="#ffffff" />
+                            ) : (
+                                <RefreshCw size={20} color="#ffffff" />
+                            )}
+                            <Text style={styles.syncButtonText}>
+                                {isSyncing ? 'Syncing...' : 'Sync Now'}
+                            </Text>
+                        </TouchableOpacity>
+                        <Text style={styles.syncNote}>
+                            Your data is automatically synced when you make changes.
                         </Text>
-                    </TouchableOpacity>
-                    <Text style={styles.syncNote}>
-                        Your data is automatically synced when you make changes.
-                    </Text>
+                    </View>
+                )
+            }
+
+            <View style={styles.section}>
+                <TouchableOpacity onPress={() => setShowFeedbackModal(true)} style={styles.menuItem}>
+                    <MessageSquare size={24} color="#94a3b8" />
+                    <Text style={styles.menuItemText}>Report a bug or suggest a feature</Text>
+                </TouchableOpacity>
+            </View>
+
+            <Modal
+                visible={showFeedbackModal}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setShowFeedbackModal(false)}
+            >
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Send Feedback</Text>
+                            <TouchableOpacity onPress={() => setShowFeedbackModal(false)}>
+                                <Text style={styles.modalCloseText}>Close</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <TextInput
+                            style={styles.feedbackInput}
+                            placeholder="Describe your issue or suggestion..."
+                            placeholderTextColor="#64748b"
+                            multiline
+                            numberOfLines={5}
+                            value={feedbackMessage}
+                            onChangeText={setFeedbackMessage}
+                            textAlignVertical="top"
+                        />
+                        <TouchableOpacity
+                            style={styles.submitButton}
+                            onPress={handleFeedbackSubmit}
+                            disabled={isSendingFeedback}
+                        >
+                            {isSendingFeedback ? (
+                                <ActivityIndicator color="#fff" />
+                            ) : (
+                                <Text style={styles.submitButtonText}>Send Feedback</Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            )}
+            </Modal>
 
             <View style={styles.footer}>
                 <Text style={styles.version}>TaskWise v3.0.0</Text>
             </View>
-        </SafeAreaView>
+        </SafeAreaView >
     );
 }
 
@@ -198,6 +302,7 @@ const styles = StyleSheet.create({
     profileCard: {
         flexDirection: 'row',
         alignItems: 'center',
+        height: 70, // Fixed height to prevent layout shift
     },
     avatar: {
         width: 60,
@@ -364,5 +469,75 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
         fontSize: 12,
         fontWeight: '600',
+    },
+    forgotPasswordButton: {
+        alignSelf: 'flex-end',
+        marginBottom: 12,
+    },
+    forgotPasswordText: {
+        color: '#6366f1',
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    menuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 4,
+    },
+    menuItemText: {
+        marginLeft: 15,
+        fontSize: 16,
+        color: '#f8fafc',
+        fontWeight: '500',
+    },
+    modalContainer: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        padding: 20,
+    },
+    modalContent: {
+        backgroundColor: '#1e293b',
+        borderRadius: 16,
+        padding: 20,
+        borderWidth: 1,
+        borderColor: '#334155',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 20,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#f8fafc',
+    },
+    modalCloseText: {
+        color: '#94a3b8',
+        fontSize: 16,
+    },
+    feedbackInput: {
+        backgroundColor: '#0f172a',
+        borderRadius: 12,
+        padding: 15,
+        color: '#f8fafc',
+        fontSize: 16,
+        borderWidth: 1,
+        borderColor: '#334155',
+        height: 150,
+        marginBottom: 20,
+    },
+    submitButton: {
+        backgroundColor: '#6366f1',
+        padding: 16,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    submitButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '700',
     },
 });

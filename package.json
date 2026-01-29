@@ -35,5 +35,8 @@
     "react-native-svg": "15.12.1",
     "react-native-worklets": "0.5.1"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "firebase-tools": "^15.4.0"
+  }
 }

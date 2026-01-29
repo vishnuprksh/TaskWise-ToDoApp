@@ -4,7 +4,8 @@ import {
     signOut as firebaseSignOut,
     onAuthStateChanged as firebaseOnAuthStateChanged,
     GoogleAuthProvider,
-    signInWithCredential
+    signInWithCredential,
+    sendPasswordResetEmail
 } from 'firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth } from './FirebaseConfig';
@@ -32,6 +33,15 @@ export const signOut = async () => {
         await firebaseSignOut(auth);
     } catch (error) {
         console.error('Sign Out Error:', error);
+    }
+};
+
+export const sendPasswordReset = async (email) => {
+    try {
+        await sendPasswordResetEmail(auth, email);
+    } catch (error) {
+        console.error('Password Reset Error:', error);
+        throw error;
     }
 };
 

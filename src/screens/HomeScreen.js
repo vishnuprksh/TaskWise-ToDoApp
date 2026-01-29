@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     StyleSheet,
     Text,
@@ -21,6 +22,8 @@ import {
     ChevronDown,
     ChevronRight,
     CalendarRange,
+    Hand,
+    X,
 } from 'lucide-react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useApp } from '../context/AppContext';
@@ -36,6 +39,8 @@ export default function HomeScreen({ navigation }) {
     const [projectSearchText, setProjectSearchText] = useState('');
     const [selectedFilterProject, setSelectedFilterProject] = useState(null); // null means 'All'
     const [isFinishedExpanded, setIsFinishedExpanded] = useState(false);
+    const [showTutorial, setShowTutorial] = useState(false);
+    const TUTORIAL_KEY = '@taskwise_tutorial_seen';
 
     // Task Form State
     const [editingTask, setEditingTask] = useState(null);
@@ -51,12 +56,33 @@ export default function HomeScreen({ navigation }) {
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
+        checkTutorial();
         Animated.timing(fadeAnim, {
             toValue: 1,
             duration: 1000,
             useNativeDriver: true,
         }).start();
     }, []);
+
+    const checkTutorial = async () => {
+        try {
+            const hasSeen = await AsyncStorage.getItem(TUTORIAL_KEY);
+            if (!hasSeen) {
+                setShowTutorial(true);
+            }
+        } catch (error) {
+            console.log('Error checking tutorial:', error);
+        }
+    };
+
+    const dismissTutorial = async () => {
+        try {
+            await AsyncStorage.setItem(TUTORIAL_KEY, 'true');
+            setShowTutorial(false);
+        } catch (error) {
+            console.log('Error saving tutorial status:', error);
+        }
+    };
 
     const handleSaveTask = () => {
         if (taskText.trim().length === 0) return;
@@ -309,6 +335,30 @@ export default function HomeScreen({ navigation }) {
                     onSchedule={handleScheduleTask}
                     task={taskToSchedule}
                 />
+
+                {/* Tutorial Modal */}
+                <Modal
+                    visible={showTutorial}
+                    transparent={true}
+                    animationType="fade"
+                    onRequestClose={dismissTutorial}
+                    statusBarTranslucent
+                >
+                    <View style={styles.tutorialOverlay}>
+                        <View style={styles.tutorialContent}>
+                            <View style={styles.tutorialIconBg}>
+                                <Hand size={40} color="#6366f1" />
+                            </View>
+                            <Text style={styles.tutorialTitle}>Quick Tip!</Text>
+                            <Text style={styles.tutorialText}>
+                                Swipe right on a task to add it to your calendar.
+                            </Text>
+                            <TouchableOpacity style={styles.tutorialButton} onPress={dismissTutorial}>
+                                <Text style={styles.tutorialButtonText}>Got it!</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </Modal>
             </SafeAreaView>
         </GestureHandlerRootView>
     );
@@ -457,5 +507,64 @@ const styles = StyleSheet.create({
     emptyStateText: {
         color: '#64748b',
         fontSize: 16,
-    }
+    },
+    tutorialOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.8)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    tutorialContent: {
+        backgroundColor: '#1e293b',
+        width: '85%',
+        borderRadius: 24,
+        padding: 30,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#334155',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.3,
+        shadowRadius: 20,
+        elevation: 10,
+    },
+    tutorialIconBg: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        backgroundColor: '#6366f120',
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 20,
+        borderWidth: 1,
+        borderColor: '#6366f140',
+    },
+    tutorialTitle: {
+        fontSize: 24,
+        fontWeight: '800',
+        color: '#f8fafc',
+        marginBottom: 10,
+        textAlign: 'center',
+    },
+    tutorialText: {
+        fontSize: 16,
+        color: '#94a3b8',
+        textAlign: 'center',
+        marginBottom: 25,
+        lineHeight: 24,
+    },
+    tutorialButton: {
+        backgroundColor: '#6366f1',
+        paddingVertical: 14,
+        paddingHorizontal: 40,
+        borderRadius: 16,
+        width: '100%',
+        alignItems: 'center',
+    },
+    tutorialButtonText: {
+        color: '#ffffff',
+        fontSize: 18,
+        fontWeight: 'bold',
+    },
 });

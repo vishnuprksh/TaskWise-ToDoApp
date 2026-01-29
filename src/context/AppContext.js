@@ -84,6 +84,14 @@ export const AppProvider = ({ children }) => {
         }
     };
 
+    const sendPasswordReset = async (email) => {
+        try {
+            await AuthService.sendPasswordReset(email);
+        } catch (error) {
+            throw error;
+        }
+    };
+
     const signOut = async () => {
         try {
             await AuthService.signOut();
@@ -282,6 +290,7 @@ export const AppProvider = ({ children }) => {
                 signIn,
                 signInWithEmail,
                 signUpWithEmail,
+                sendPasswordReset,
                 signOut,
                 syncNow,
                 updateTasks,
