@@ -28,19 +28,14 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "extra": {
-      "eas": {
-        "projectId": "30d3c40f-db01-42cb-8628-6815db92db13"
-      }
-    },
-    "owner": "vishnuprakash1797",
     "plugins": [
       [
         "expo-build-properties",
         {
           "android": {
             "enableShrinkResourcesInReleaseBuilds": true,
-            "enableProguardInReleaseBuilds": true
+            "enableProguardInReleaseBuilds": true,
+            "enableMinifyInReleaseBuilds": true
           }
         }
       ],
@@ -53,6 +48,12 @@
           "color": "#ffffff"
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "2019eef4-3f5d-45a8-bf6c-d03617b767c9"
+      }
+    },
+    "owner": "vishnuprksh"
   }
 }

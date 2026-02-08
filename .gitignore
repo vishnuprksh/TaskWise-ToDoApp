@@ -47,3 +47,7 @@ yarn-error.*
 # Firebase configuration
 google-services.json
 android/app/google-services.json
+
+# Temporary scripts
+extractCert.js
+extract_jks_manual.py
