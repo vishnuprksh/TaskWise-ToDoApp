@@ -24,17 +24,20 @@ import {
     CalendarRange,
     Hand,
     X,
+    User,
 } from 'lucide-react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useApp } from '../context/AppContext';
 import TaskItem from '../components/TaskItem';
 import TaskForm from '../components/TaskForm';
 import ScheduleModal from '../components/ScheduleModal';
+import UserMenu from '../components/UserMenu';
 
 export default function HomeScreen({ navigation }) {
-    const { tasks, projects, updateTasks, calculatePriorityScore, updateTaskSchedule } = useApp();
+    const { tasks, projects, updateTasks, calculatePriorityScore, updateTaskSchedule, user, signOut } = useApp();
     const [isTaskModalVisible, setIsTaskModalVisible] = useState(false);
     const [isScheduleModalVisible, setIsScheduleModalVisible] = useState(false);
+    const [isUserMenuVisible, setIsUserMenuVisible] = useState(false);
     const [taskToSchedule, setTaskToSchedule] = useState(null);
     const [projectSearchText, setProjectSearchText] = useState('');
     const [selectedFilterProject, setSelectedFilterProject] = useState(null); // null means 'All'
@@ -196,8 +199,8 @@ export default function HomeScreen({ navigation }) {
                         <TouchableOpacity onPress={() => navigation.navigate('Projects')} style={styles.headerButton}>
                             <Briefcase size={20} color="#fff" />
                         </TouchableOpacity>
-                        <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={styles.headerButton}>
-                            <Settings size={20} color="#fff" />
+                        <TouchableOpacity onPress={() => setIsUserMenuVisible(true)} style={styles.headerButton}>
+                            <User size={20} color="#fff" />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -334,6 +337,13 @@ export default function HomeScreen({ navigation }) {
                     onClose={() => setIsScheduleModalVisible(false)}
                     onSchedule={handleScheduleTask}
                     task={taskToSchedule}
+                />
+                <UserMenu
+                    visible={isUserMenuVisible}
+                    onClose={() => setIsUserMenuVisible(false)}
+                    user={user}
+                    onSignOut={signOut}
+                    onNavigateSettings={() => navigation.navigate('Settings')}
                 />
 
                 {/* Tutorial Modal */}
