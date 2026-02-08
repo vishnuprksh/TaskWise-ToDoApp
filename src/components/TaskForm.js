@@ -8,7 +8,7 @@ import {
     StyleSheet,
     Platform,
 } from 'react-native';
-import { X, Search, Plus, Calendar, Clock } from 'lucide-react-native';
+import { X, Search, Plus, Calendar, Clock, ChevronDown, ChevronUp } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
 import AttributeSelector from './AttributeSelector';
@@ -34,6 +34,7 @@ const TaskForm = ({
 }) => {
     const [showStartPicker, setShowStartPicker] = React.useState(false);
     const [showEndPicker, setShowEndPicker] = React.useState(false);
+    const [isAttributesExpanded, setIsAttributesExpanded] = React.useState(false);
 
     const onStartChange = (event, selectedDate) => {
         setShowStartPicker(Platform.OS === 'ios');
@@ -177,27 +178,42 @@ const TaskForm = ({
 
                 <View style={styles.divider} />
 
-                <Text style={styles.sectionTitle}>Priority Attributes</Text>
-                <AttributeSelector
-                    label="Easiness (40%)"
-                    value={attributes.easiness}
-                    onChange={(val) => setAttributes({ ...attributes, easiness: val })}
-                />
-                <AttributeSelector
-                    label="Importance (30%)"
-                    value={attributes.importance}
-                    onChange={(val) => setAttributes({ ...attributes, importance: val })}
-                />
-                <AttributeSelector
-                    label="Emergency (20%)"
-                    value={attributes.emergency}
-                    onChange={(val) => setAttributes({ ...attributes, emergency: val })}
-                />
-                <AttributeSelector
-                    label="Interest (10%)"
-                    value={attributes.interest}
-                    onChange={(val) => setAttributes({ ...attributes, interest: val })}
-                />
+                <TouchableOpacity
+                    style={styles.expandableHeader}
+                    onPress={() => setIsAttributesExpanded(!isAttributesExpanded)}
+                >
+                    <Text style={styles.sectionTitle}>Priority Attributes</Text>
+                    {isAttributesExpanded ? (
+                        <ChevronUp size={20} color="#94a3b8" />
+                    ) : (
+                        <ChevronDown size={20} color="#94a3b8" />
+                    )}
+                </TouchableOpacity>
+
+                {isAttributesExpanded && (
+                    <View style={styles.attributesSection}>
+                        <AttributeSelector
+                            label="Easiness (40%)"
+                            value={attributes.easiness}
+                            onChange={(val) => setAttributes({ ...attributes, easiness: val })}
+                        />
+                        <AttributeSelector
+                            label="Importance (30%)"
+                            value={attributes.importance}
+                            onChange={(val) => setAttributes({ ...attributes, importance: val })}
+                        />
+                        <AttributeSelector
+                            label="Emergency (20%)"
+                            value={attributes.emergency}
+                            onChange={(val) => setAttributes({ ...attributes, emergency: val })}
+                        />
+                        <AttributeSelector
+                            label="Interest (10%)"
+                            value={attributes.interest}
+                            onChange={(val) => setAttributes({ ...attributes, interest: val })}
+                        />
+                    </View>
+                )}
             </ScrollView>
 
             <TouchableOpacity style={styles.saveButton} onPress={onSave}>
@@ -292,7 +308,16 @@ const styles = StyleSheet.create({
         color: '#f8fafc',
         fontSize: 16,
         fontWeight: '600',
-        marginBottom: 12,
+    },
+    expandableHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 8,
+        marginBottom: 8,
+    },
+    attributesSection: {
+        marginTop: 8,
     },
     saveButton: {
         backgroundColor: '#6366f1',
