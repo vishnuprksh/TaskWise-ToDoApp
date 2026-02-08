@@ -119,6 +119,13 @@ const UserMenu = ({ visible, onClose, user, onSignOut, onNavigateSettings }) => 
                     <ChevronRight size={20} color="#475569" />
                 </TouchableOpacity>
 
+                <TouchableOpacity style={styles.menuItem} onPress={() => setShowFeedbackModal(true)}>
+                    <View style={[styles.menuIconContainer, { backgroundColor: '#f59e0b20' }]}>
+                        <MessageSquare size={20} color="#f59e0b" />
+                    </View>
+                    <Text style={styles.menuItemText}>Report a Bug / Suggest a Feature</Text>
+                    <ChevronRight size={20} color="#475569" />
+                </TouchableOpacity>
             </View>
         </View>
     );
@@ -186,14 +193,6 @@ const UserMenu = ({ visible, onClose, user, onSignOut, onNavigateSettings }) => 
                         Simply swipe right on any task in your list to reveal the calendar option and schedule it for a specific date.
                     </Text>
                 </View>
-
-                <TouchableOpacity style={styles.feedbackButton} onPress={() => setShowFeedbackModal(true)}>
-                    <View style={[styles.menuIconContainer, { backgroundColor: '#f59e0b20' }]}>
-                        <MessageSquare size={20} color="#f59e0b" />
-                    </View>
-                    <Text style={styles.feedbackButtonText}>Report a Bug / Suggest a Feature</Text>
-                    <ChevronRight size={20} color="#475569" />
-                </TouchableOpacity>
             </View>
 
             <TouchableOpacity style={styles.backButton} onPress={() => setActiveSection('main')}>
