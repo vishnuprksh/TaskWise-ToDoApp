@@ -9,6 +9,9 @@ import {
     ScrollView,
     Linking,
     Platform,
+    TextInput,
+    Alert,
+    ActivityIndicator,
 } from 'react-native';
 import {
     X,
@@ -18,17 +21,52 @@ import {
     HelpCircle,
     ChevronRight,
     Github,
+    Globe,
+    ShieldCheck,
+    MessageSquare,
 } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { db } from '../services/FirebaseConfig';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import * as Application from 'expo-application';
 
 const UserMenu = ({ visible, onClose, user, onSignOut, onNavigateSettings }) => {
     const [activeSection, setActiveSection] = useState('main'); // 'main', 'about', 'help'
+    const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+    const [feedbackMessage, setFeedbackMessage] = useState('');
+    const [isSendingFeedback, setIsSendingFeedback] = useState(false);
 
     useEffect(() => {
         if (visible) {
             setActiveSection('main');
         }
     }, [visible]);
+
+    const handleFeedbackSubmit = async () => {
+        if (!feedbackMessage.trim()) {
+            Alert.alert('Error', 'Please enter a message');
+            return;
+        }
+        setIsSendingFeedback(true);
+        try {
+            await addDoc(collection(db, 'feedback'), {
+                message: feedbackMessage,
+                userId: user ? user.uid : null,
+                userEmail: user ? user.email : null,
+                appVersion: Application.nativeApplicationVersion || '1.0.0',
+                platform: Platform.OS,
+                createdAt: serverTimestamp()
+            });
+            Alert.alert('Success', 'Feedback sent successfully!');
+            setFeedbackMessage('');
+            setShowFeedbackModal(false);
+        } catch (error) {
+            console.error(error);
+            Alert.alert('Error', 'Failed to send feedback');
+        } finally {
+            setIsSendingFeedback(false);
+        }
+    };
 
     const renderMain = () => (
         <View style={styles.sectionContainer}>
@@ -148,6 +186,14 @@ const UserMenu = ({ visible, onClose, user, onSignOut, onNavigateSettings }) => 
                         Simply swipe right on any task in your list to reveal the calendar option and schedule it for a specific date.
                     </Text>
                 </View>
+
+                <TouchableOpacity style={styles.feedbackButton} onPress={() => setShowFeedbackModal(true)}>
+                    <View style={[styles.menuIconContainer, { backgroundColor: '#f59e0b20' }]}>
+                        <MessageSquare size={20} color="#f59e0b" />
+                    </View>
+                    <Text style={styles.feedbackButtonText}>Report a Bug / Suggest a Feature</Text>
+                    <ChevronRight size={20} color="#475569" />
+                </TouchableOpacity>
             </View>
 
             <TouchableOpacity style={styles.backButton} onPress={() => setActiveSection('main')}>
@@ -184,6 +230,45 @@ const UserMenu = ({ visible, onClose, user, onSignOut, onNavigateSettings }) => 
                         </View>
                     </View>
                 </SafeAreaView>
+
+                <Modal
+                    visible={showFeedbackModal}
+                    transparent={true}
+                    animationType="slide"
+                    onRequestClose={() => setShowFeedbackModal(false)}
+                >
+                    <View style={styles.feedbackModalOverlay}>
+                        <View style={styles.feedbackModalContent}>
+                            <View style={styles.feedbackModalHeader}>
+                                <Text style={styles.feedbackModalTitle}>Send Feedback</Text>
+                                <TouchableOpacity onPress={() => setShowFeedbackModal(false)} style={styles.feedbackModalCloseButton}>
+                                    <X size={24} color="#f8fafc" />
+                                </TouchableOpacity>
+                            </View>
+                            <TextInput
+                                style={styles.feedbackInput}
+                                placeholder="Describe your issue or suggestion..."
+                                placeholderTextColor="#64748b"
+                                multiline
+                                numberOfLines={5}
+                                value={feedbackMessage}
+                                onChangeText={setFeedbackMessage}
+                                textAlignVertical="top"
+                            />
+                            <TouchableOpacity
+                                style={styles.submitButton}
+                                onPress={handleFeedbackSubmit}
+                                disabled={isSendingFeedback}
+                            >
+                                {isSendingFeedback ? (
+                                    <ActivityIndicator color="#fff" />
+                                ) : (
+                                    <Text style={styles.submitButtonText}>Send Feedback</Text>
+                                )}
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </Modal>
             </View>
         </Modal>
     );
@@ -432,6 +517,88 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: '#94a3b8',
         lineHeight: 20,
+    },
+    feedbackButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f59e0b10',
+        padding: 16,
+        borderRadius: 20,
+        borderWidth: 1,
+        borderColor: '#f59e0b30',
+        marginTop: 20,
+        gap: 12,
+    },
+    feedbackButtonText: {
+        flex: 1,
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#f59e0b',
+    },
+    feedbackModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(2, 6, 23, 0.9)',
+        justifyContent: 'center',
+        padding: 20,
+    },
+    feedbackModalContent: {
+        backgroundColor: '#1e293b',
+        borderRadius: 24,
+        padding: 24,
+        borderWidth: 1,
+        borderColor: '#334155',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.5,
+        shadowRadius: 20,
+        elevation: 10,
+    },
+    feedbackModalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    feedbackModalTitle: {
+        fontSize: 24,
+        fontWeight: '800',
+        color: '#f8fafc',
+    },
+    feedbackModalCloseButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#334155',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    feedbackInput: {
+        backgroundColor: '#0f172a',
+        borderRadius: 16,
+        padding: 16,
+        color: '#f8fafc',
+        fontSize: 16,
+        borderWidth: 1,
+        borderColor: '#334155',
+        height: 150,
+        marginBottom: 24,
+        textAlignVertical: 'top',
+    },
+    submitButton: {
+        backgroundColor: '#6366f1',
+        padding: 18,
+        borderRadius: 16,
+        alignItems: 'center',
+        shadowColor: '#6366f1',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
+    },
+    submitButtonText: {
+        color: '#fff',
+        fontSize: 18,
+        fontWeight: '700',
     },
 });
 
