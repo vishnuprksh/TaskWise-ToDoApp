@@ -6,8 +6,11 @@ import {
     TouchableOpacity,
     ScrollView,
     StyleSheet,
+    Platform,
 } from 'react-native';
-import { X, Search, Plus } from 'lucide-react-native';
+import { X, Search, Plus, Calendar, Clock } from 'lucide-react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { format } from 'date-fns';
 import AttributeSelector from './AttributeSelector';
 
 const TaskForm = ({
@@ -21,10 +24,30 @@ const TaskForm = ({
     setProjectSearchText,
     attributes,
     setAttributes,
+    startDate,
+    setStartDate,
+    endDate,
+    setEndDate,
     onSave,
     onClose,
     onNavigateProjects,
 }) => {
+    const [showStartPicker, setShowStartPicker] = React.useState(false);
+    const [showEndPicker, setShowEndPicker] = React.useState(false);
+
+    const onStartChange = (event, selectedDate) => {
+        setShowStartPicker(Platform.OS === 'ios');
+        if (selectedDate) {
+            setStartDate(selectedDate);
+        }
+    };
+
+    const onEndChange = (event, selectedDate) => {
+        setShowEndPicker(Platform.OS === 'ios');
+        if (selectedDate) {
+            setEndDate(selectedDate);
+        }
+    };
 
     return (
         <View style={styles.modalContent}>
@@ -92,6 +115,65 @@ const TaskForm = ({
                         <Text style={[styles.projectOptionText, { color: '#6366f1', marginLeft: 4 }]}>New</Text>
                     </TouchableOpacity>
                 </ScrollView>
+
+                <View style={styles.divider} />
+
+                <Text style={styles.sectionTitle}>Timeline (Optional)</Text>
+                <View style={styles.timelineContainer}>
+                    <TouchableOpacity
+                        style={styles.dateSelector}
+                        onPress={() => setShowStartPicker(true)}
+                    >
+                        <Calendar size={18} color="#6366f1" />
+                        <View style={styles.dateTextContainer}>
+                            <Text style={styles.dateLabel}>Start Date</Text>
+                            <Text style={styles.dateValue}>
+                                {startDate ? format(startDate, 'MMM d, yyyy') : 'Not set'}
+                            </Text>
+                        </View>
+                        {startDate && (
+                            <TouchableOpacity onPress={() => setStartDate(null)} style={styles.clearDate}>
+                                <X size={14} color="#ef4444" />
+                            </TouchableOpacity>
+                        )}
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.dateSelector}
+                        onPress={() => setShowEndPicker(true)}
+                    >
+                        <Clock size={18} color="#6366f1" />
+                        <View style={styles.dateTextContainer}>
+                            <Text style={styles.dateLabel}>End Date</Text>
+                            <Text style={styles.dateValue}>
+                                {endDate ? format(endDate, 'MMM d, yyyy') : 'Not set'}
+                            </Text>
+                        </View>
+                        {endDate && (
+                            <TouchableOpacity onPress={() => setEndDate(null)} style={styles.clearDate}>
+                                <X size={14} color="#ef4444" />
+                            </TouchableOpacity>
+                        )}
+                    </TouchableOpacity>
+                </View>
+
+                {showStartPicker && (
+                    <DateTimePicker
+                        value={startDate || new Date()}
+                        mode="date"
+                        display="default"
+                        onChange={onStartChange}
+                    />
+                )}
+
+                {showEndPicker && (
+                    <DateTimePicker
+                        value={endDate || new Date()}
+                        mode="date"
+                        display="default"
+                        onChange={onEndChange}
+                    />
+                )}
 
                 <View style={styles.divider} />
 
@@ -222,6 +304,40 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontSize: 16,
         fontWeight: '700',
+    },
+    timelineContainer: {
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 8,
+    },
+    dateSelector: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#0f172a',
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#334155',
+        gap: 10,
+    },
+    dateTextContainer: {
+        flex: 1,
+    },
+    dateLabel: {
+        color: '#64748b',
+        fontSize: 10,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+    },
+    dateValue: {
+        color: '#f8fafc',
+        fontSize: 14,
+        fontWeight: '600',
+        marginTop: 2,
+    },
+    clearDate: {
+        padding: 4,
     },
 });
 

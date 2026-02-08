@@ -42,6 +42,14 @@ const UserMenu = ({ visible, onClose, user, onSignOut, onNavigateSettings }) => 
         }
     }, [visible]);
 
+    const handleHeaderClose = () => {
+        if (activeSection !== 'main') {
+            setActiveSection('main');
+        } else {
+            onClose();
+        }
+    };
+
     const handleFeedbackSubmit = async () => {
         if (!feedbackMessage.trim()) {
             Alert.alert('Error', 'Please enter a message');
@@ -153,9 +161,6 @@ const UserMenu = ({ visible, onClose, user, onSignOut, onNavigateSettings }) => 
                 </View>
             </View>
 
-            <TouchableOpacity style={styles.backButton} onPress={() => setActiveSection('main')}>
-                <Text style={styles.backButtonText}>Back to Menu</Text>
-            </TouchableOpacity>
         </ScrollView>
     );
 
@@ -195,9 +200,6 @@ const UserMenu = ({ visible, onClose, user, onSignOut, onNavigateSettings }) => 
                 </View>
             </View>
 
-            <TouchableOpacity style={styles.backButton} onPress={() => setActiveSection('main')}>
-                <Text style={styles.backButtonText}>Back to Menu</Text>
-            </TouchableOpacity>
         </ScrollView>
     );
 
@@ -215,7 +217,7 @@ const UserMenu = ({ visible, onClose, user, onSignOut, onNavigateSettings }) => 
                             <Text style={styles.headerTitle}>
                                 {activeSection === 'main' ? 'Menu' : activeSection === 'about' ? 'About' : 'Help'}
                             </Text>
-                            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                            <TouchableOpacity onPress={handleHeaderClose} style={styles.closeButton}>
                                 <X size={24} color="#f8fafc" />
                             </TouchableOpacity>
                         </View>
@@ -483,34 +485,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#334155',
         justifyContent: 'center',
         alignItems: 'center',
-    },
-    backButton: {
-        marginTop: 32,
-        padding: 16,
-        borderRadius: 16,
-        backgroundColor: '#33415580',
-        alignItems: 'center',
-    },
-    backButtonText: {
-        color: '#f8fafc',
-        fontWeight: '700',
-        fontSize: 16,
-    },
-    helpItems: {
-        gap: 20,
-    },
-    helpItem: {
-        backgroundColor: '#0f172a',
-        padding: 16,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: '#334155',
-    },
-    helpQuestion: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#e2e8f0',
-        marginBottom: 8,
     },
     helpAnswer: {
         fontSize: 14,

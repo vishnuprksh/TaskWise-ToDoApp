@@ -55,6 +55,8 @@ export default function HomeScreen({ navigation }) {
         emergency: 'medium',
         interest: 'medium',
     });
+    const [startDate, setStartDate] = useState(null);
+    const [endDate, setEndDate] = useState(null);
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -98,6 +100,8 @@ export default function HomeScreen({ navigation }) {
             projectId: selectedProject,
             attributes,
             priorityScore,
+            startDate,
+            endDate,
         };
 
         let newTasks;
@@ -132,6 +136,8 @@ export default function HomeScreen({ navigation }) {
             setTaskText(task.text);
             setSelectedProject(task.projectId);
             setAttributes(task.attributes);
+            setStartDate(task.startDate ? new Date(task.startDate) : null);
+            setEndDate(task.endDate ? new Date(task.endDate) : null);
         } else {
             setEditingTask(null);
             setTaskText('');
@@ -145,6 +151,8 @@ export default function HomeScreen({ navigation }) {
                 emergency: 'medium',
                 interest: 'medium',
             });
+            setStartDate(null);
+            setEndDate(null);
         }
         setIsTaskModalVisible(true);
     };
@@ -323,6 +331,10 @@ export default function HomeScreen({ navigation }) {
                             setProjectSearchText={setProjectSearchText}
                             attributes={attributes}
                             setAttributes={setAttributes}
+                            startDate={startDate}
+                            setStartDate={setStartDate}
+                            endDate={endDate}
+                            setEndDate={setEndDate}
                             onSave={handleSaveTask}
                             onClose={closeTaskModal}
                             onNavigateProjects={() => {

@@ -102,6 +102,22 @@ const TaskItem = ({ item, project, onOpenModal, onToggle, onNavigateTimer, onDel
                         </TouchableOpacity>
                     </View>
                 </View>
+
+                {item.startDate && item.endDate && !item.completed && (
+                    <View style={styles.timelineProgressBar}>
+                        <View
+                            style={[
+                                styles.progressBarFill,
+                                {
+                                    width: `${Math.min(100, Math.max(0,
+                                        ((new Date() - new Date(item.startDate)) /
+                                            (new Date(item.endDate) - new Date(item.startDate))) * 100
+                                    ))}%`
+                                }
+                            ]}
+                        />
+                    </View>
+                )}
             </Animated.View>
         </Swipeable>
     );
@@ -223,6 +239,17 @@ const styles = StyleSheet.create({
     },
     actionButton: {
         padding: 4,
+    },
+    timelineProgressBar: {
+        height: 2,
+        backgroundColor: '#334155',
+        borderRadius: 1,
+        marginTop: 12,
+        overflow: 'hidden',
+    },
+    progressBarFill: {
+        height: '100%',
+        backgroundColor: '#6366f1',
     },
 });
 
