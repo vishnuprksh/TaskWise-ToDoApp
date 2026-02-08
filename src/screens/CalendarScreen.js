@@ -122,7 +122,7 @@ const EventItem = ({ task, project, onUpdate, onPress }) => {
 };
 
 export default function CalendarScreen({ navigation }) {
-    const { tasks, updateTaskSchedule, projects } = useApp();
+    const { tasks, updateTasks, updateTaskSchedule, projects } = useApp();
     const [selectedDate, setSelectedDate] = useState(new Date());
     const [isScheduleModalVisible, setIsScheduleModalVisible] = useState(false);
     const [taskToEdit, setTaskToEdit] = useState(null);
@@ -158,6 +158,13 @@ export default function CalendarScreen({ navigation }) {
 
     const handleScheduleUpdate = (taskId, date) => {
         updateTaskSchedule(taskId, date);
+        setIsScheduleModalVisible(false);
+        setTaskToEdit(null);
+    };
+
+    const handleDeleteTask = (taskId) => {
+        const newTasks = tasks.filter(t => t.id !== taskId);
+        updateTasks(newTasks);
         setIsScheduleModalVisible(false);
         setTaskToEdit(null);
     };
@@ -252,6 +259,7 @@ export default function CalendarScreen({ navigation }) {
                     visible={isScheduleModalVisible}
                     onClose={() => setIsScheduleModalVisible(false)}
                     onSchedule={handleScheduleUpdate}
+                    onDelete={handleDeleteTask}
                     task={taskToEdit}
                     initialDate={taskToEdit?.scheduledAt}
                 />

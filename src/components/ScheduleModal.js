@@ -5,7 +5,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { X, Calendar as CalendarIcon, Clock } from 'lucide-react-native';
 import { format } from 'date-fns';
 
-export default function ScheduleModal({ visible, onClose, onSchedule, task, initialDate }) {
+export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, task, initialDate }) {
     const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [hasTime, setHasTime] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
@@ -147,10 +147,39 @@ export default function ScheduleModal({ visible, onClose, onSchedule, task, init
                         )}
                     </View>
 
-                    <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                        <CalendarIcon size={20} color="#fff" />
-                        <Text style={styles.saveButtonText}>Add to Calendar</Text>
-                    </TouchableOpacity>
+                    <View style={styles.footer}>
+                        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                            <CalendarIcon size={20} color="#fff" />
+                            <Text style={styles.saveButtonText}>
+                                {initialDate ? 'Update Schedule' : 'Add to Calendar'}
+                            </Text>
+                        </TouchableOpacity>
+
+                        {initialDate && (
+                            <TouchableOpacity
+                                style={styles.deleteButton}
+                                onPress={() => {
+                                    Alert.alert(
+                                        "Delete Task",
+                                        "Are you sure you want to delete this task?",
+                                        [
+                                            { text: "Cancel", style: "cancel" },
+                                            {
+                                                text: "Delete",
+                                                style: "destructive",
+                                                onPress: () => {
+                                                    onDelete?.(task.id);
+                                                    onClose();
+                                                }
+                                            }
+                                        ]
+                                    );
+                                }}
+                            >
+                                <Text style={styles.deleteButtonText}>Delete Task</Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
             </View>
         </Modal>
@@ -230,6 +259,22 @@ const styles = StyleSheet.create({
     },
     saveButtonText: {
         color: '#fff',
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    footer: {
+        gap: 12,
+    },
+    deleteButton: {
+        backgroundColor: '#ef444415',
+        padding: 16,
+        borderRadius: 16,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#ef444430',
+    },
+    deleteButtonText: {
+        color: '#ef4444',
         fontSize: 16,
         fontWeight: '600',
     },
