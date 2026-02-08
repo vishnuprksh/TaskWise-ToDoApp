@@ -9,6 +9,7 @@ import {
     Flag,
     CalendarRange,
 } from 'lucide-react-native';
+import { format } from 'date-fns';
 import { formatTime } from '../utils/time';
 
 const TaskItem = ({ item, project, onOpenModal, onToggle, onNavigateTimer, onDelete, onSchedule, fadeAnim }) => {
