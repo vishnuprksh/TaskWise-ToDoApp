@@ -1,6 +1,6 @@
 {
   "name": "taskwise",
-  "version": "4.3.3",
+  "version": "4.3.7",
   "main": "index.js",
   "scripts": {
     "start": "expo start",
