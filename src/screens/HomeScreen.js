@@ -13,7 +13,7 @@ import {
     Keyboard,
     Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
     LayoutList,
     Briefcase,
@@ -28,12 +28,15 @@ import {
 } from 'lucide-react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useApp } from '../context/AppContext';
+import { isValidDate } from '../utils/time';
 import TaskItem from '../components/TaskItem';
+
 import TaskForm from '../components/TaskForm';
 import ScheduleModal from '../components/ScheduleModal';
 import UserMenu from '../components/UserMenu';
 
 export default function HomeScreen({ navigation }) {
+    const insets = useSafeAreaInsets();
     const { tasks, projects, updateTasks, calculatePriorityScore, updateTaskSchedule, user, signOut } = useApp();
     const [isTaskModalVisible, setIsTaskModalVisible] = useState(false);
     const [isScheduleModalVisible, setIsScheduleModalVisible] = useState(false);
@@ -136,9 +139,10 @@ export default function HomeScreen({ navigation }) {
             setTaskText(task.text);
             setSelectedProject(task.projectId);
             setAttributes(task.attributes);
-            setStartDate(task.startDate ? new Date(task.startDate) : null);
-            setEndDate(task.endDate ? new Date(task.endDate) : null);
+            setStartDate(isValidDate(task.startDate) ? new Date(task.startDate) : null);
+            setEndDate(isValidDate(task.endDate) ? new Date(task.endDate) : null);
         } else {
+
             setEditingTask(null);
             setTaskText('');
             // Use the selected filter project as default, otherwise fall back to the first project
@@ -303,7 +307,7 @@ export default function HomeScreen({ navigation }) {
 
                 {/* Add Task FAB */}
                 <TouchableOpacity
-                    style={styles.fab}
+                    style={[styles.fab, { bottom: Math.max(20, insets.bottom + 20) }]}
                     onPress={() => openTaskModal()}
                 >
                     <Plus size={32} color="#fff" />
@@ -503,7 +507,6 @@ const styles = StyleSheet.create({
     },
     fab: {
         position: 'absolute',
-        bottom: 30,
         right: 30,
         width: 60,
         height: 60,

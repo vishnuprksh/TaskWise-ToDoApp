@@ -4,6 +4,7 @@ import { Calendar } from 'react-native-calendars';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { X, Calendar as CalendarIcon, Clock } from 'lucide-react-native';
 import { format } from 'date-fns';
+import { isValidDate } from '../utils/time';
 
 export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, task, initialDate }) {
     const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -12,12 +13,13 @@ export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, 
     const [selectedTime, setSelectedTime] = useState(new Date());
 
     useEffect(() => {
-        if (visible && initialDate) {
+        if (visible && isValidDate(initialDate)) {
             const dateObj = new Date(initialDate);
             setSelectedDate(format(dateObj, 'yyyy-MM-dd'));
             setSelectedTime(dateObj);
             setHasTime(true); // Assuming editing always implies time for now, or check if hours/mins are handled
         } else if (visible) {
+
             // Reset to defaults for new schedule
             setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
             setHasTime(false);

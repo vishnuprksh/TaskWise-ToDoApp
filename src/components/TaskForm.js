@@ -11,7 +11,9 @@ import {
 import { X, Search, Plus, Calendar, Clock, ChevronDown, ChevronUp } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
+import { safeFormat } from '../utils/time';
 import AttributeSelector from './AttributeSelector';
+
 
 const TaskForm = ({
     isEditing,
@@ -129,7 +131,7 @@ const TaskForm = ({
                         <View style={styles.dateTextContainer}>
                             <Text style={styles.dateLabel}>Start Date</Text>
                             <Text style={styles.dateValue}>
-                                {startDate ? format(startDate, 'MMM d, yyyy') : 'Not set'}
+                                {safeFormat(startDate, 'MMM d, yyyy', 'Not set')}
                             </Text>
                         </View>
                         {startDate && (
@@ -147,8 +149,9 @@ const TaskForm = ({
                         <View style={styles.dateTextContainer}>
                             <Text style={styles.dateLabel}>End Date</Text>
                             <Text style={styles.dateValue}>
-                                {endDate ? format(endDate, 'MMM d, yyyy') : 'Not set'}
+                                {safeFormat(endDate, 'MMM d, yyyy', 'Not set')}
                             </Text>
+
                         </View>
                         {endDate && (
                             <TouchableOpacity onPress={() => setEndDate(null)} style={styles.clearDate}>

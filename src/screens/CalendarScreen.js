@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react-native';
 import { useApp } from '../context/AppContext';
 import { format, addDays, subDays, isSameDay, startOfDay } from 'date-fns';
+import { isValidDate, safeFormat } from '../utils/time';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, runOnJS, withSpring } from 'react-native-reanimated';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -14,13 +15,14 @@ const TIME_LABELS_WIDTH = 60;
 const SCREEN_WIDTH = Dimensions.get('window').width;
 
 const EventItem = ({ task, project, onUpdate, onPress }) => {
-    const startDate = new Date(task.scheduledAt);
+    const startDate = isValidDate(task.scheduledAt) ? new Date(task.scheduledAt) : new Date();
     const startMinutes = startDate.getHours() * 60 + startDate.getMinutes();
     const duration = task.duration || 60;
 
     // Check if event is past
     const endDate = new Date(startDate.getTime() + duration * 60000);
     const isPast = endDate < new Date();
+
 
     const top = useSharedValue(startMinutes * (HOUR_HEIGHT / 60));
     const height = useSharedValue(duration * (HOUR_HEIGHT / 60));
@@ -106,8 +108,9 @@ const EventItem = ({ task, project, onUpdate, onPress }) => {
                         {task.text}
                     </Text>
                     <Text style={styles.eventTime}>
-                        {format(startDate, 'h:mm a')}
+                        {safeFormat(startDate, 'h:mm a')}
                     </Text>
+
                     {isPast && <View style={styles.pastOverlay} />}
                 </View>
             </GestureDetector>
@@ -129,15 +132,16 @@ export default function CalendarScreen({ navigation }) {
     const [showDatePicker, setShowDatePicker] = useState(false);
 
     const dayTasks = tasks.filter(t =>
-        t.scheduledAt && isSameDay(new Date(t.scheduledAt), selectedDate)
+        isValidDate(t.scheduledAt) && isSameDay(new Date(t.scheduledAt), selectedDate)
     );
 
     const handleUpdateTask = (taskId, updates) => {
         const task = tasks.find(t => t.id === taskId);
-        if (!task) return;
+        if (!task || !isValidDate(task.scheduledAt)) return;
 
         if (updates.newHours !== undefined) {
             const newDate = new Date(task.scheduledAt);
+
             newDate.setHours(updates.newHours);
             newDate.setMinutes(updates.newMinutes);
             // Re-validate if it changed day (it shouldn't in this view but just in case)

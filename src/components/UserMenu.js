@@ -24,6 +24,7 @@ import {
     Globe,
     ShieldCheck,
     MessageSquare,
+    Settings,
 } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { db } from '../services/FirebaseConfig';
@@ -80,16 +81,28 @@ const UserMenu = ({ visible, onClose, user, onSignOut, onNavigateSettings }) => 
         <View style={styles.sectionContainer}>
             <View style={styles.profileSection}>
                 {user ? (
-                    <View style={styles.userInfo}>
+                    <TouchableOpacity
+                        style={styles.userInfo}
+                        onPress={() => {
+                            onClose();
+                            onNavigateSettings();
+                        }}
+                    >
                         <Image source={{ uri: user.photoURL }} style={styles.avatar} />
                         <View style={styles.userTextInfo}>
                             <Text style={styles.userName}>{user.displayName || 'User'}</Text>
                             <Text style={styles.userEmail}>{user.email}</Text>
                         </View>
-                        <TouchableOpacity onPress={onSignOut} style={styles.signOutButton}>
+                        <TouchableOpacity
+                            onPress={(e) => {
+                                // Stop propagation isn't standard in RN, but nested touchables handle it if onPress is defined on both.
+                                onSignOut();
+                            }}
+                            style={styles.signOutButton}
+                        >
                             <LogOut size={20} color="#ef4444" />
                         </TouchableOpacity>
-                    </View>
+                    </TouchableOpacity>
                 ) : (
                     <TouchableOpacity
                         style={styles.signInPrompt}
@@ -118,6 +131,7 @@ const UserMenu = ({ visible, onClose, user, onSignOut, onNavigateSettings }) => 
                     <Text style={styles.menuItemText}>Help & Support</Text>
                     <ChevronRight size={20} color="#475569" />
                 </TouchableOpacity>
+
 
                 <TouchableOpacity style={styles.menuItem} onPress={() => setActiveSection('about')}>
                     <View style={[styles.menuIconContainer, { backgroundColor: '#6366f120' }]}>

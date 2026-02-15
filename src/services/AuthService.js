@@ -75,7 +75,12 @@ export const signInWithGoogle = async () => {
         // 5. Sign-in the user with the credential
         return await signInWithCredential(auth, googleCredential);
     } catch (error) {
-        console.error('Google Sign-In Error:', error);
+        if (error.code === 'DEVELOPER_ERROR') {
+            console.error('Google Sign-In DEVELOPER_ERROR detected. This often means the SHA-1 fingerprint in Firebase/Google Console does not match the keystore used for the current build.');
+            console.error('Troubleshooting: https://react-native-google-signin.github.io/docs/troubleshooting');
+        } else {
+            console.error('Google Sign-In Error:', error);
+        }
         throw error;
     }
 };

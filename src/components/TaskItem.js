@@ -9,8 +9,7 @@ import {
     Flag,
     CalendarRange,
 } from 'lucide-react-native';
-import { format } from 'date-fns';
-import { formatTime } from '../utils/time';
+import { formatTime, safeFormat, isValidDate } from '../utils/time';
 
 const TaskItem = ({ item, project, onOpenModal, onToggle, onNavigateTimer, onDelete, onSchedule, fadeAnim }) => {
     const swipeableRef = useRef(null);
@@ -107,26 +106,28 @@ const TaskItem = ({ item, project, onOpenModal, onToggle, onNavigateTimer, onDel
                 {(item.startDate || item.endDate) && !item.completed && (
                     <View style={styles.timelineInfo}>
                         <View style={styles.timelineDates}>
-                            {item.startDate && (
+                            {isValidDate(item.startDate) && (
                                 <Text style={styles.timelineDateText}>
-                                    Start: {format(new Date(item.startDate), 'MMM d')}
+                                    Start: {safeFormat(item.startDate, 'MMM d')}
                                 </Text>
                             )}
-                            {item.endDate && (
+                            {isValidDate(item.endDate) && (
                                 <Text style={styles.timelineDateText}>
-                                    End: {format(new Date(item.endDate), 'MMM d')}
+                                    End: {safeFormat(item.endDate, 'MMM d')}
                                 </Text>
                             )}
                         </View>
-                        {item.startDate && item.endDate && (
+                        {isValidDate(item.startDate) && isValidDate(item.endDate) && (
                             <View style={styles.timelineProgressBar}>
                                 <View
                                     style={[
                                         styles.progressBarFill,
                                         {
                                             width: `${Math.min(100, Math.max(0,
-                                                ((new Date() - new Date(item.startDate)) /
-                                                    (new Date(item.endDate) - new Date(item.startDate))) * 100
+                                                (new Date(item.endDate) - new Date(item.startDate)) > 0
+                                                    ? ((new Date() - new Date(item.startDate)) /
+                                                        (new Date(item.endDate) - new Date(item.startDate))) * 100
+                                                    : 0
                                             ))}%`
                                         }
                                     ]}
