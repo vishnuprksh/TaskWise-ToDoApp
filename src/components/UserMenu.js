@@ -30,6 +30,20 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { db } from '../services/FirebaseConfig';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import * as Application from 'expo-application';
+import { Briefcase } from 'lucide-react-native';
+
+const MemberItem = ({ name, role, icon: Icon, color, onPress }) => (
+    <TouchableOpacity style={styles.memberCard} onPress={onPress} disabled={!onPress}>
+        <View style={[styles.memberIconContainer, { backgroundColor: `${color}20` }]}>
+            <Icon size={24} color={color} />
+        </View>
+        <View style={styles.memberInfo}>
+            <Text style={styles.memberName}>{name}</Text>
+            <Text style={styles.memberRole}>{role}</Text>
+        </View>
+        {onPress && <ChevronRight size={20} color="#475569" />}
+    </TouchableOpacity>
+);
 
 const UserMenu = ({ visible, onClose, user, onSignOut, onNavigateSettings }) => {
     const [activeSection, setActiveSection] = useState('main'); // 'main', 'about', 'help'
@@ -156,25 +170,41 @@ const UserMenu = ({ visible, onClose, user, onSignOut, onNavigateSettings }) => 
         <ScrollView style={styles.sectionContainer} showsVerticalScrollIndicator={false}>
             <View style={styles.detailHeader}>
                 <Text style={styles.detailTitle}>About TaskWise</Text>
-                <Text style={styles.appVersion}>Version 3.0.0</Text>
+                <Text style={styles.appVersion}>Version {Application.nativeApplicationVersion || '3.0.0'}</Text>
             </View>
 
             <View style={styles.aboutContent}>
                 <Text style={styles.aboutText}>
-                    TaskWise is a modern task management application designed to help you stay organized and productive. Built with a focus on ease of use and powerful prioritization, it ensures you're always working on what matters most.
+                    TaskWise is a modern task management application designed to help you stay organized and productive. Built with a focus on ease of use and powerful prioritization.
                 </Text>
 
-                <View style={styles.developerCard}>
-                    <Text style={styles.developerTitle}>Developed by</Text>
-                    <Text style={styles.developerName}>BrightTomorrow</Text>
-                    <View style={styles.socialLinks}>
-                        <TouchableOpacity style={styles.socialIcon} onPress={() => Linking.openURL('https://github.com/BrightTomorrowLabs')}>
-                            <Github size={20} color="#94a3b8" />
-                        </TouchableOpacity>
-                    </View>
+                <View style={styles.membersSection}>
+                    <Text style={styles.sectionTitle}>Team</Text>
+
+                    <MemberItem
+                        name="BrightTomorrow"
+                        role="Organization"
+                        icon={Briefcase}
+                        color="#6366f1"
+                        onPress={() => Linking.openURL('https://github.com/BrightTomorrowLabs')}
+                    />
+
+                    <MemberItem
+                        name="Vishnu Prakash"
+                        role="Lead Developer"
+                        icon={User}
+                        color="#10b981"
+                        onPress={() => Linking.openURL('https://github.com/vishnuprksh')}
+                    />
+                </View>
+
+                <View style={styles.linksSection}>
+                    <TouchableOpacity style={styles.linkButton} onPress={() => Linking.openURL('https://github.com/BrightTomorrowLabs/TaskWise')}>
+                        <Github size={20} color="#94a3b8" />
+                        <Text style={styles.linkButtonText}>View Source Code</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
-
         </ScrollView>
     );
 
@@ -467,38 +497,62 @@ const styles = StyleSheet.create({
         color: '#94a3b8',
         lineHeight: 24,
     },
-    developerCard: {
+    membersSection: {
+        marginTop: 10,
+        gap: 12,
+    },
+    sectionTitle: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#94a3b8',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 4,
+    },
+    memberCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
         backgroundColor: '#0f172a',
-        padding: 20,
+        padding: 16,
         borderRadius: 20,
         borderWidth: 1,
         borderColor: '#334155',
-        marginTop: 8,
     },
-    developerTitle: {
-        fontSize: 12,
-        color: '#64748b',
-        fontWeight: '700',
-        textTransform: 'uppercase',
-    },
-    developerName: {
-        fontSize: 18,
-        fontWeight: '700',
-        color: '#f8fafc',
-        marginTop: 4,
-    },
-    socialLinks: {
-        flexDirection: 'row',
-        gap: 12,
-        marginTop: 16,
-    },
-    socialIcon: {
-        width: 36,
-        height: 36,
-        borderRadius: 10,
-        backgroundColor: '#334155',
+    memberIconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         justifyContent: 'center',
         alignItems: 'center',
+    },
+    memberInfo: {
+        flex: 1,
+        marginLeft: 16,
+    },
+    memberName: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#f8fafc',
+    },
+    memberRole: {
+        fontSize: 13,
+        color: '#94a3b8',
+        marginTop: 2,
+    },
+    linksSection: {
+        marginTop: 10,
+        alignItems: 'center',
+    },
+    linkButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 12,
+        gap: 8,
+    },
+    linkButtonText: {
+        color: '#94a3b8',
+        fontSize: 14,
+        fontWeight: '600',
     },
     helpAnswer: {
         fontSize: 14,
