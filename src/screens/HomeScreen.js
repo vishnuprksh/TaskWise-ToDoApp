@@ -97,14 +97,15 @@ export default function HomeScreen({ navigation }) {
 
         const priorityScore = calculatePriorityScore(attributes);
         const newTask = {
+            ...(editingTask || {}),
             id: editingTask ? editingTask.id : Date.now().toString(),
             text: taskText,
             completed: editingTask ? editingTask.completed : false,
             projectId: selectedProject,
             attributes,
             priorityScore,
-            startDate,
-            endDate,
+            startDate: startDate ? startDate.toISOString() : null,
+            endDate: endDate ? endDate.toISOString() : null,
         };
 
         let newTasks;

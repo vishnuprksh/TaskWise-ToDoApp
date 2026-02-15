@@ -1,11 +1,13 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     StyleSheet,
     Text,
     View,
     TouchableOpacity,
     Dimensions,
-    Animated,
+    Modal,
+    TextInput,
+    Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -14,10 +16,24 @@ import {
     Pause,
     RotateCcw,
     Clock,
+    Settings,
+    X,
 } from 'lucide-react-native';
 import { useApp } from '../context/AppContext';
 import { formatTime } from '../utils/time';
 import { useKeepAwake } from 'expo-keep-awake';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import Svg, { Circle, G } from 'react-native-svg';
+import Animated, {
+    useSharedValue,
+    useAnimatedProps,
+    withTiming,
+    withRepeat,
+    withSequence,
+    withSpring,
+    Easing,
+    useAnimatedStyle,
+} from 'react-native-reanimated';
 
 function KeepAwakeWrapper() {
     useKeepAwake();
@@ -25,17 +41,79 @@ function KeepAwakeWrapper() {
 }
 
 const { width } = Dimensions.get('window');
-const TIMER_DURATION = 25 * 60; // 25 minutes
+const CIRCLE_SIZE = width * 0.7;
+const STROKE_WIDTH = 15;
+const RADIUS = (CIRCLE_SIZE - STROKE_WIDTH) / 2;
+const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+const MODES = {
+    WORK: 'work',
+    SHORT_BREAK: 'shortBreak',
+    LONG_BREAK: 'longBreak',
+};
+
+const DEFAULT_DURATIONS = {
+    [MODES.WORK]: 25,
+    [MODES.SHORT_BREAK]: 5,
+    [MODES.LONG_BREAK]: 15,
+};
+
+const STORAGE_KEY_SETTINGS = '@taskwise_timer_settings';
 
 export default function TimerScreen({ navigation, route }) {
     const { task } = route.params;
     const { updateTaskTime } = useApp();
-    const [timeLeft, setTimeLeft] = useState(TIMER_DURATION);
+
+    // Settings State
+    const [durations, setDurations] = useState(DEFAULT_DURATIONS);
+    const [currentMode, setCurrentMode] = useState(MODES.WORK);
+    const [showSettings, setShowSettings] = useState(false);
+
+    // Timer State
+    const [timeLeft, setTimeLeft] = useState(DEFAULT_DURATIONS[MODES.WORK] * 60);
     const [isActive, setIsActive] = useState(false);
-    const progressAnim = useRef(new Animated.Value(0)).current;
     const lastTickRef = useRef(Date.now());
 
-    // Track elapsed time to update global state
+    // Animation Values
+    const progress = useSharedValue(1);
+    const breathing = useSharedValue(1);
+
+    // Initial Load
+    useEffect(() => {
+        loadSettings();
+    }, []);
+
+    // Effect to update time left when mode changes or durations load
+    useEffect(() => {
+        if (!isActive) {
+            setTimeLeft(durations[currentMode] * 60);
+            progress.value = withTiming(1, { duration: 500 });
+        }
+    }, [currentMode, durations]);
+
+    const loadSettings = async () => {
+        try {
+            const saved = await AsyncStorage.getItem(STORAGE_KEY_SETTINGS);
+            if (saved) {
+                setDurations(JSON.parse(saved));
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const saveSettings = async (newDurations) => {
+        try {
+            await AsyncStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(newDurations));
+            setDurations(newDurations);
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    // Timer Logic
     useEffect(() => {
         let interval = null;
         if (isActive && timeLeft > 0) {
@@ -44,34 +122,49 @@ export default function TimerScreen({ navigation, route }) {
                 const now = Date.now();
                 const delta = Math.floor((now - lastTickRef.current) / 1000);
                 if (delta >= 1) {
-                    setTimeLeft((prev) => prev - 1);
-                    updateTaskTime(task.id, 1); // Add 1 second to total time
+                    setTimeLeft((prev) => {
+                        const newVal = Math.max(0, prev - 1);
+                        progress.value = withTiming(newVal / (durations[currentMode] * 60), {
+                            duration: 1000,
+                            easing: Easing.linear,
+                        });
+                        return newVal;
+                    });
+
+                    if (currentMode === MODES.WORK) {
+                        updateTaskTime(task.id, 1);
+                    }
                     lastTickRef.current = now;
                 }
             }, 1000);
+
+            // Start breathing animation
+            breathing.value = withRepeat(
+                withSequence(
+                    withTiming(1.05, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
+                    withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) })
+                ),
+                -1,
+                true
+            );
+
         } else if (timeLeft === 0) {
             setIsActive(false);
             clearInterval(interval);
+            breathing.value = withTiming(1);
+            Alert.alert("Timer Finished", "Good job!", [{ text: "OK" }]);
+        } else {
+            breathing.value = withTiming(1);
         }
         return () => clearInterval(interval);
-    }, [isActive, timeLeft]);
+    }, [isActive, timeLeft, currentMode, durations]);
 
-    useEffect(() => {
-        Animated.timing(progressAnim, {
-            toValue: (TIMER_DURATION - timeLeft) / TIMER_DURATION,
-            duration: 1000,
-            useNativeDriver: false,
-        }).start();
-    }, [timeLeft]);
-
-    const toggleTimer = () => {
-        setIsActive(!isActive);
-    };
+    const toggleTimer = () => setIsActive(!isActive);
 
     const resetTimer = () => {
         setIsActive(false);
-        setTimeLeft(TIMER_DURATION);
-        progressAnim.setValue(0);
+        setTimeLeft(durations[currentMode] * 60);
+        progress.value = withTiming(1, { duration: 500 });
     };
 
     const formatCountdown = (seconds) => {
@@ -80,10 +173,89 @@ export default function TimerScreen({ navigation, route }) {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const progressWidth = progressAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: ['0%', '100%'],
+    // Animated Props
+    const animatedCircleProps = useAnimatedProps(() => {
+        return {
+            strokeDashoffset: CIRCUMFERENCE * (1 - progress.value),
+        };
     });
+
+    const breathingStyle = useAnimatedStyle(() => {
+        return {
+            transform: [{ scale: breathing.value }],
+        };
+    });
+
+    const getModeColor = () => {
+        switch (currentMode) {
+            case MODES.WORK: return '#6366f1';
+            case MODES.SHORT_BREAK: return '#10b981';
+            case MODES.LONG_BREAK: return '#3b82f6';
+            default: return '#6366f1';
+        }
+    };
+
+    const renderSettingsModal = () => {
+        const [tempDurations, setTempDurations] = useState(durations);
+
+        return (
+            <Modal
+                visible={showSettings}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setShowSettings(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Timer Settings</Text>
+                            <TouchableOpacity onPress={() => setShowSettings(false)}>
+                                <X size={24} color="#f8fafc" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.settingItem}>
+                            <Text style={styles.settingLabel}>Work (min)</Text>
+                            <TextInput
+                                style={styles.settingInput}
+                                keyboardType="number-pad"
+                                value={String(tempDurations[MODES.WORK])}
+                                onChangeText={(v) => setTempDurations(p => ({ ...p, [MODES.WORK]: parseInt(v) || 0 }))}
+                            />
+                        </View>
+                        <View style={styles.settingItem}>
+                            <Text style={styles.settingLabel}>Short Break (min)</Text>
+                            <TextInput
+                                style={styles.settingInput}
+                                keyboardType="number-pad"
+                                value={String(tempDurations[MODES.SHORT_BREAK])}
+                                onChangeText={(v) => setTempDurations(p => ({ ...p, [MODES.SHORT_BREAK]: parseInt(v) || 0 }))}
+                            />
+                        </View>
+                        <View style={styles.settingItem}>
+                            <Text style={styles.settingLabel}>Long Break (min)</Text>
+                            <TextInput
+                                style={styles.settingInput}
+                                keyboardType="number-pad"
+                                value={String(tempDurations[MODES.LONG_BREAK])}
+                                onChangeText={(v) => setTempDurations(p => ({ ...p, [MODES.LONG_BREAK]: parseInt(v) || 0 }))}
+                            />
+                        </View>
+
+                        <TouchableOpacity
+                            style={styles.saveButton}
+                            onPress={() => {
+                                saveSettings(tempDurations);
+                                setShowSettings(false);
+                            }}
+                        >
+                            <Text style={styles.saveButtonText}>Save Changes</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+        );
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -91,31 +263,75 @@ export default function TimerScreen({ navigation, route }) {
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                     <ArrowLeft size={24} color="#f8fafc" />
                 </TouchableOpacity>
-                <Text style={styles.title}>Focus Mode</Text>
-                <View style={{ width: 40 }} />
+                <View style={styles.modeSelector}>
+                    <TouchableOpacity onPress={() => { setIsActive(false); setCurrentMode(MODES.WORK); }}>
+                        <Text style={[styles.modeText, currentMode === MODES.WORK && styles.activeModeText]}>Work</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => { setIsActive(false); setCurrentMode(MODES.SHORT_BREAK); }}>
+                        <Text style={[styles.modeText, currentMode === MODES.SHORT_BREAK && styles.activeModeText]}>Short</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => { setIsActive(false); setCurrentMode(MODES.LONG_BREAK); }}>
+                        <Text style={[styles.modeText, currentMode === MODES.LONG_BREAK && styles.activeModeText]}>Long</Text>
+                    </TouchableOpacity>
+                </View>
+                <TouchableOpacity onPress={() => setShowSettings(true)} style={styles.iconButton}>
+                    <Settings size={24} color="#f8fafc" />
+                </TouchableOpacity>
             </View>
 
             <View style={styles.content}>
                 <View style={styles.taskContainer}>
-                    <Text style={styles.taskLabel}>Current Task</Text>
+                    <Text style={styles.taskLabel}>
+                        {currentMode === MODES.WORK ? 'Current Task' : 'Take a Break'}
+                    </Text>
                     <Text style={styles.taskText}>{task.text}</Text>
-                    <View style={styles.totalTimeContainer}>
-                        <Clock size={16} color="#94a3b8" />
-                        <Text style={styles.totalTimeText}>
-                            Total Focus: {formatTime(task.timeSpent || 0)}
+                    {currentMode === MODES.WORK && (
+                        <View style={styles.totalTimeContainer}>
+                            <Clock size={16} color="#94a3b8" />
+                            <Text style={styles.totalTimeText}>
+                                Total Focus: {formatTime(task.timeSpent || 0)}
+                            </Text>
+                        </View>
+                    )}
+                </View>
+
+                <Animated.View style={[styles.timerWrapper, breathingStyle]}>
+                    <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE}>
+                        <Circle
+                            cx={CIRCLE_SIZE / 2}
+                            cy={CIRCLE_SIZE / 2}
+                            r={RADIUS}
+                            stroke="#1e293b"
+                            strokeWidth={STROKE_WIDTH}
+                            fill="transparent"
+                        />
+                        <AnimatedCircle
+                            cx={CIRCLE_SIZE / 2}
+                            cy={CIRCLE_SIZE / 2}
+                            r={RADIUS}
+                            stroke={getModeColor()}
+                            strokeWidth={STROKE_WIDTH}
+                            fill="transparent"
+                            strokeDasharray={`${CIRCUMFERENCE} ${CIRCUMFERENCE}`}
+                            animatedProps={animatedCircleProps}
+                            strokeLinecap="round"
+                            rotation="-90"
+                            origin={`${CIRCLE_SIZE / 2}, ${CIRCLE_SIZE / 2}`}
+                        />
+                    </Svg>
+                    <View style={styles.timerTextContainer}>
+                        <Text style={styles.timerText}>{formatCountdown(timeLeft)}</Text>
+                        <Text style={[styles.timerLabel, { color: getModeColor() }]}>
+                            {isActive ? 'FOCUS' : 'PAUSED'}
                         </Text>
                     </View>
-                </View>
-
-                <View style={styles.timerContainer}>
-                    <Text style={styles.timerText}>{formatCountdown(timeLeft)}</Text>
-                    <View style={styles.progressBarContainer}>
-                        <Animated.View style={[styles.progressBar, { width: progressWidth }]} />
-                    </View>
-                </View>
+                </Animated.View>
 
                 <View style={styles.controls}>
-                    <TouchableOpacity onPress={toggleTimer} style={styles.controlButton}>
+                    <TouchableOpacity
+                        onPress={toggleTimer}
+                        style={[styles.controlButton, { backgroundColor: getModeColor() }]}
+                    >
                         {isActive ? (
                             <Pause size={32} color="#fff" fill="#fff" />
                         ) : (
@@ -128,10 +344,10 @@ export default function TimerScreen({ navigation, route }) {
                 </View>
                 {isActive && <KeepAwakeWrapper />}
             </View>
+            {renderSettingsModal()}
         </SafeAreaView>
     );
 }
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -144,9 +360,26 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingVertical: 20,
     },
-    title: {
-        fontSize: 20,
+    iconButton: {
+        padding: 8,
+    },
+    modeSelector: {
+        flexDirection: 'row',
+        backgroundColor: '#1e293b',
+        borderRadius: 20,
+        padding: 4,
+        gap: 4,
+    },
+    modeText: {
+        color: '#94a3b8',
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 16,
+        fontSize: 12,
         fontWeight: '600',
+    },
+    activeModeText: {
+        backgroundColor: '#334155',
         color: '#f8fafc',
     },
     backButton: {
@@ -158,11 +391,11 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        paddingHorizontal: 30,
     },
     taskContainer: {
         alignItems: 'center',
         marginBottom: 40,
+        paddingHorizontal: 30,
     },
     taskLabel: {
         color: '#94a3b8',
@@ -192,28 +425,26 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '500',
     },
-    timerContainer: {
-        width: '100%',
+    timerWrapper: {
+        justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 60,
     },
+    timerTextContainer: {
+        position: 'absolute',
+        alignItems: 'center',
+    },
     timerText: {
         color: '#fff',
-        fontSize: 80,
-        fontWeight: '200',
+        fontSize: 56,
+        fontWeight: '700',
         fontVariant: ['tabular-nums'],
-        marginBottom: 30,
     },
-    progressBarContainer: {
-        width: '100%',
-        height: 6,
-        backgroundColor: '#1e293b',
-        borderRadius: 3,
-        overflow: 'hidden',
-    },
-    progressBar: {
-        height: '100%',
-        backgroundColor: '#6366f1',
+    timerLabel: {
+        fontSize: 14,
+        fontWeight: '700',
+        letterSpacing: 2,
+        marginTop: 4,
     },
     controls: {
         flexDirection: 'row',
@@ -224,10 +455,9 @@ const styles = StyleSheet.create({
         width: 80,
         height: 80,
         borderRadius: 40,
-        backgroundColor: '#6366f1',
         justifyContent: 'center',
         alignItems: 'center',
-        shadowColor: '#6366f1',
+        shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.4,
         shadowRadius: 16,
@@ -240,5 +470,58 @@ const styles = StyleSheet.create({
         backgroundColor: '#1e293b',
         shadowColor: 'transparent',
         elevation: 0,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(2, 6, 23, 0.85)',
+        justifyContent: 'center',
+        padding: 20,
+    },
+    modalContent: {
+        backgroundColor: '#1e293b',
+        borderRadius: 24,
+        padding: 24,
+        borderWidth: 1,
+        borderColor: '#334155',
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '700',
+        color: '#f8fafc',
+    },
+    settingItem: {
+        marginBottom: 16,
+    },
+    settingLabel: {
+        color: '#94a3b8',
+        marginBottom: 8,
+        fontSize: 14,
+    },
+    settingInput: {
+        backgroundColor: '#0f172a',
+        borderRadius: 12,
+        padding: 12,
+        color: '#f8fafc',
+        fontSize: 16,
+        borderWidth: 1,
+        borderColor: '#334155',
+    },
+    saveButton: {
+        backgroundColor: '#6366f1',
+        padding: 16,
+        borderRadius: 16,
+        alignItems: 'center',
+        marginTop: 8,
+    },
+    saveButtonText: {
+        color: '#fff',
+        fontSize: 16,
+        fontWeight: '700',
     },
 });

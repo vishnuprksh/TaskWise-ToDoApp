@@ -1,4 +1,7 @@
 const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onRequest } = require("firebase-functions/v2/https");
+const cors = require('cors')({ origin: true });
+
 const { defineSecret } = require('firebase-functions/params');
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
@@ -95,5 +98,62 @@ ${message.replace(/\n/g, '<br>')}
             // But for transient errors, throwing might be appropriate if we want retry.
             // For now, logging only as per requirements "Handle function failures silently (log only)"
         }
+    }
+);
+
+exports.getData = onRequest(
+    {
+        secrets: [],
+        region: "us-central1"
+    },
+    (req, res) => {
+        cors(req, res, async () => {
+            try {
+                const uid = req.query.uid || req.body.uid;
+                const apiKey = req.query.apiKey || req.body.apiKey;
+
+                if (!uid || !apiKey) {
+                    res.status(400).json({ error: "Missing uid or apiKey" });
+                    return;
+                }
+
+                const userDocRef = admin.firestore().collection('users').doc(uid);
+                const userDoc = await userDocRef.get();
+
+                if (!userDoc.exists) {
+                    res.status(404).json({ error: "User not found" });
+                    return;
+                }
+
+                const userData = userDoc.data();
+                // Check if apiKey matches.
+                // NOTE: You must set the 'apiKey' field in your user's document in Firestore manually!
+                if (!userData.apiKey || userData.apiKey !== apiKey) {
+                    res.status(403).json({ error: "Invalid API Key" });
+                    return;
+                }
+
+                // Fetch data
+                const tasksSnapshot = await userDocRef.collection('tasks').get();
+                const projectsSnapshot = await userDocRef.collection('projects').get();
+
+                const tasks = tasksSnapshot.docs.map(doc => doc.data());
+                const projects = projectsSnapshot.docs.map(doc => doc.data());
+
+                res.json({
+                    user: {
+                        uid: uid,
+                        email: userData.email,
+                        displayName: userData.displayName
+                    },
+                    tasks: tasks,
+                    projects: projects
+                });
+
+            } catch (error) {
+                console.error("Error in getData:", error);
+                res.status(500).json({ error: "Internal Server Error" });
+            }
+        });
     }
 );

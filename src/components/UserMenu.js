@@ -25,10 +25,12 @@ import {
     ShieldCheck,
     MessageSquare,
     Settings,
+    Code,
+    RefreshCw
 } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { db } from '../services/FirebaseConfig';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 import * as Application from 'expo-application';
 import { Briefcase } from 'lucide-react-native';
 
@@ -46,16 +48,72 @@ const MemberItem = ({ name, role, icon: Icon, color, onPress }) => (
 );
 
 const UserMenu = ({ visible, onClose, user, onSignOut, onNavigateSettings }) => {
-    const [activeSection, setActiveSection] = useState('main'); // 'main', 'about', 'help'
+    const [activeSection, setActiveSection] = useState('main'); // 'main', 'about', 'help', 'developer'
     const [showFeedbackModal, setShowFeedbackModal] = useState(false);
     const [feedbackMessage, setFeedbackMessage] = useState('');
     const [isSendingFeedback, setIsSendingFeedback] = useState(false);
 
+    const [apiKey, setApiKey] = useState(null);
+    const [isLoadingKey, setIsLoadingKey] = useState(false);
+
     useEffect(() => {
         if (visible) {
             setActiveSection('main');
+            if (user) {
+                fetchApiKey();
+            }
         }
-    }, [visible]);
+    }, [visible, user]);
+
+    const fetchApiKey = async () => {
+        if (!user) return;
+        try {
+            setIsLoadingKey(true);
+            const userDocRef = doc(db, 'users', user.uid);
+            const userDoc = await getDoc(userDocRef);
+            if (userDoc.exists() && userDoc.data().apiKey) {
+                setApiKey(userDoc.data().apiKey);
+            } else {
+                setApiKey(null);
+            }
+        } catch (error) {
+            console.error("Error fetching API Key:", error);
+        } finally {
+            setIsLoadingKey(false);
+        }
+    };
+
+    const handleGenerateApiKey = async () => {
+        if (!user) return;
+
+        Alert.alert(
+            "Generate New API Key?",
+            "This will invalidate any existing key. Are you sure?",
+            [
+                { text: "Cancel", style: "cancel" },
+                {
+                    text: "Generate",
+                    style: "destructive",
+                    onPress: async () => {
+                        try {
+                            setIsLoadingKey(true);
+                            const newKey = Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+                            const userDocRef = doc(db, 'users', user.uid);
+                            // Use setDoc with merge: true to create the document if it doesn't exist
+                            await setDoc(userDocRef, { apiKey: newKey }, { merge: true });
+                            setApiKey(newKey);
+                            Alert.alert("Success", "New API Key generated!");
+                        } catch (error) {
+                            console.error("Error generating API key:", error);
+                            Alert.alert("Error", "Failed to generate API Key.");
+                        } finally {
+                            setIsLoadingKey(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
 
     const handleHeaderClose = () => {
         if (activeSection !== 'main') {
@@ -91,6 +149,54 @@ const UserMenu = ({ visible, onClose, user, onSignOut, onNavigateSettings }) => 
         }
     };
 
+    const renderDeveloper = () => (
+        <ScrollView style={styles.sectionContainer} showsVerticalScrollIndicator={false}>
+            <View style={styles.detailHeader}>
+                <Text style={styles.detailTitle}>Developer Settings</Text>
+                <Text style={styles.appVersion}>API Access</Text>
+            </View>
+
+            <View style={styles.aboutContent}>
+                <Text style={styles.aboutText}>
+                    Use this API Key to access your data from external applications. Keep this key secret!
+                </Text>
+
+                <View style={[styles.userInfo, { flexDirection: 'column', alignItems: 'flex-start', gap: 10, marginTop: 20 }]}>
+                    <Text style={{ color: '#94a3b8', fontSize: 12, fontWeight: '700', textTransform: 'uppercase' }}>Your API Key</Text>
+
+                    {isLoadingKey ? (
+                        <ActivityIndicator color="#6366f1" />
+                    ) : apiKey ? (
+                        <View style={{ backgroundColor: '#0f172a', padding: 12, borderRadius: 8, width: '100%', borderWidth: 1, borderColor: '#334155' }}>
+                            <Text selectable={true} style={{ color: '#f8fafc', fontSize: 14, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}>
+                                {apiKey}
+                            </Text>
+                        </View>
+                    ) : (
+                        <Text style={{ color: '#64748b', fontStyle: 'italic' }}>No API Key generated yet.</Text>
+                    )}
+
+                    <TouchableOpacity
+                        style={[styles.linkButton, { backgroundColor: '#6366f120', paddingHorizontal: 16, borderRadius: 10, alignSelf: 'flex-start', marginTop: 10 }]}
+                        onPress={handleGenerateApiKey}
+                    >
+                        <RefreshCw size={18} color="#6366f1" />
+                        <Text style={{ color: '#6366f1', fontWeight: '600', marginLeft: 8 }}>
+                            {apiKey ? "Regenerate Key" : "Generate Key"}
+                        </Text>
+                    </TouchableOpacity>
+                </View>
+
+                <View style={[styles.helpItem, { marginTop: 30 }]}>
+                    <Text style={styles.helpQuestion}>How to use?</Text>
+                    <Text style={[styles.helpAnswer, { fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', fontSize: 12, marginTop: 10 }]}>
+                        curl "https://us-central1-taskwise-2019eef4.cloudfunctions.net/getData?uid={user?.uid}&apiKey=YOUR_KEY"
+                    </Text>
+                </View>
+            </View>
+        </ScrollView>
+    );
+
     const renderMain = () => (
         <View style={styles.sectionContainer}>
             <View style={styles.profileSection}>
@@ -109,7 +215,6 @@ const UserMenu = ({ visible, onClose, user, onSignOut, onNavigateSettings }) => 
                         </View>
                         <TouchableOpacity
                             onPress={(e) => {
-                                // Stop propagation isn't standard in RN, but nested touchables handle it if onPress is defined on both.
                                 onSignOut();
                             }}
                             style={styles.signOutButton}
@@ -146,7 +251,6 @@ const UserMenu = ({ visible, onClose, user, onSignOut, onNavigateSettings }) => 
                     <ChevronRight size={20} color="#475569" />
                 </TouchableOpacity>
 
-
                 <TouchableOpacity style={styles.menuItem} onPress={() => setActiveSection('about')}>
                     <View style={[styles.menuIconContainer, { backgroundColor: '#6366f120' }]}>
                         <Info size={20} color="#6366f1" />
@@ -160,6 +264,14 @@ const UserMenu = ({ visible, onClose, user, onSignOut, onNavigateSettings }) => 
                         <MessageSquare size={20} color="#f59e0b" />
                     </View>
                     <Text style={styles.menuItemText}>Report a Bug / Suggest a Feature</Text>
+                    <ChevronRight size={20} color="#475569" />
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.menuItem} onPress={() => setActiveSection('developer')}>
+                    <View style={[styles.menuIconContainer, { backgroundColor: '#10b98120' }]}>
+                        <Code size={20} color="#10b981" />
+                    </View>
+                    <Text style={styles.menuItemText}>Developer / API Access</Text>
                     <ChevronRight size={20} color="#475569" />
                 </TouchableOpacity>
             </View>
@@ -243,7 +355,6 @@ const UserMenu = ({ visible, onClose, user, onSignOut, onNavigateSettings }) => 
                     </Text>
                 </View>
             </View>
-
         </ScrollView>
     );
 
@@ -259,7 +370,7 @@ const UserMenu = ({ visible, onClose, user, onSignOut, onNavigateSettings }) => 
                     <View style={styles.menuContainer}>
                         <View style={styles.header}>
                             <Text style={styles.headerTitle}>
-                                {activeSection === 'main' ? 'Menu' : activeSection === 'about' ? 'About' : 'Help'}
+                                {activeSection === 'main' ? 'Menu' : activeSection === 'about' ? 'About' : activeSection === 'developer' ? 'Developer' : 'Help'}
                             </Text>
                             <TouchableOpacity onPress={handleHeaderClose} style={styles.closeButton}>
                                 <X size={24} color="#f8fafc" />
@@ -269,6 +380,7 @@ const UserMenu = ({ visible, onClose, user, onSignOut, onNavigateSettings }) => 
                         {activeSection === 'main' && renderMain()}
                         {activeSection === 'about' && renderAbout()}
                         {activeSection === 'help' && renderHelp()}
+                        {activeSection === 'developer' && renderDeveloper()}
 
                         <View style={styles.footer}>
                             <Text style={styles.footerText}>Stay organized, stay ahead.</Text>
@@ -554,27 +666,22 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '600',
     },
+    helpQuestion: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#f8fafc',
+        marginBottom: 8,
+    },
     helpAnswer: {
         fontSize: 14,
         color: '#94a3b8',
         lineHeight: 20,
     },
-    feedbackButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#f59e0b10',
-        padding: 16,
-        borderRadius: 20,
-        borderWidth: 1,
-        borderColor: '#f59e0b30',
-        marginTop: 20,
-        gap: 12,
+    helpItem: {
+        marginBottom: 24,
     },
-    feedbackButtonText: {
-        flex: 1,
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#f59e0b',
+    helpItems: {
+        gap: 24,
     },
     feedbackModalOverlay: {
         flex: 1,
