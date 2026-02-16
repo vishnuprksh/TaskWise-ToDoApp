@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, View, Text, TouchableOpacity, StyleSheet, Switch, Platform } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, StyleSheet, Switch, Platform, Alert } from 'react-native';
 import { Calendar } from 'react-native-calendars';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { X, Calendar as CalendarIcon, Clock } from 'lucide-react-native';
+import { X, Calendar as CalendarIcon, Clock, Copy, Trash2 } from 'lucide-react-native';
 import { format } from 'date-fns';
 import { isValidDate } from '../utils/time';
 
-export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, task, initialDate }) {
+export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, onDuplicate, task, initialDate }) {
     const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [hasTime, setHasTime] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
@@ -17,17 +17,16 @@ export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, 
             const dateObj = new Date(initialDate);
             setSelectedDate(format(dateObj, 'yyyy-MM-dd'));
             setSelectedTime(dateObj);
-            setHasTime(true); // Assuming editing always implies time for now, or check if hours/mins are handled
+            setHasTime(true);
         } else if (visible) {
-
-            // Reset to defaults for new schedule
+            // Reset to defaults for new schedule 
             setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
             setHasTime(false);
             setSelectedTime(new Date());
         }
     }, [visible, initialDate]);
 
-    const handleSave = () => {
+    const getFinalDate = () => {
         let finalDate = new Date(selectedDate);
         if (hasTime) {
             finalDate.setHours(selectedTime.getHours());
@@ -35,8 +34,16 @@ export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, 
         } else {
             finalDate.setHours(9, 0, 0, 0);
         }
+        return finalDate;
+    };
 
-        onSchedule(task.id, finalDate);
+    const handleSave = () => {
+        onSchedule(task.id, getFinalDate());
+        onClose();
+    };
+
+    const handleDuplicate = () => {
+        onDuplicate?.(task.id, getFinalDate());
         onClose();
     };
 
@@ -150,24 +157,33 @@ export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, 
                     </View>
 
                     <View style={styles.footer}>
-                        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-                            <CalendarIcon size={20} color="#fff" />
-                            <Text style={styles.saveButtonText}>
-                                {initialDate ? 'Update Schedule' : 'Add to Calendar'}
-                            </Text>
-                        </TouchableOpacity>
+                        <View style={styles.actionButtons}>
+                            <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+                                <CalendarIcon size={20} color="#fff" />
+                                <Text style={styles.saveButtonText}>
+                                    {initialDate ? 'Update' : 'Add'}
+                                </Text>
+                            </TouchableOpacity>
+
+                            {initialDate && (
+                                <TouchableOpacity style={styles.duplicateButton} onPress={handleDuplicate}>
+                                    <Copy size={20} color="#fff" />
+                                    <Text style={styles.saveButtonText}>Duplicate</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
 
                         {initialDate && (
                             <TouchableOpacity
                                 style={styles.deleteButton}
                                 onPress={() => {
                                     Alert.alert(
-                                        "Delete Task",
-                                        "Are you sure you want to delete this task?",
+                                        "Remove from Calendar",
+                                        "Are you sure you want to remove this event from the calendar? The task will remain in your list.",
                                         [
                                             { text: "Cancel", style: "cancel" },
                                             {
-                                                text: "Delete",
+                                                text: "Remove",
                                                 style: "destructive",
                                                 onPress: () => {
                                                     onDelete?.(task.id);
@@ -178,7 +194,8 @@ export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, 
                                     );
                                 }}
                             >
-                                <Text style={styles.deleteButtonText}>Delete Task</Text>
+                                <Trash2 size={20} color="#ef4444" />
+                                <Text style={styles.deleteButtonText}>Remove from Calendar</Text>
                             </TouchableOpacity>
                         )}
                     </View>
@@ -258,6 +275,21 @@ const styles = StyleSheet.create({
         padding: 16,
         borderRadius: 16,
         gap: 8,
+        flex: 1,
+    },
+    duplicateButton: {
+        backgroundColor: '#0ea5e9',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+        borderRadius: 16,
+        gap: 8,
+        flex: 1,
+    },
+    actionButtons: {
+        flexDirection: 'row',
+        gap: 12,
     },
     saveButtonText: {
         color: '#fff',
@@ -272,8 +304,11 @@ const styles = StyleSheet.create({
         padding: 16,
         borderRadius: 16,
         alignItems: 'center',
+        justifyContent: 'center',
         borderWidth: 1,
         borderColor: '#ef444430',
+        flexDirection: 'row',
+        gap: 8,
     },
     deleteButtonText: {
         color: '#ef4444',

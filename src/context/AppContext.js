@@ -280,6 +280,38 @@ export const AppProvider = ({ children }) => {
         updateTasks(newTasks);
     };
 
+    const duplicateTask = async (originalTaskId, newDate) => {
+        const originalTask = tasks.find(t => t.id === originalTaskId);
+        if (!originalTask) return;
+
+        // Schedule notification for the new task
+        let notificationId = null;
+        if (newDate) {
+            const triggerDate = subMinutes(new Date(newDate), 5);
+            if (triggerDate > new Date()) {
+                notificationId = await NotificationService.scheduleEventNotification(
+                    "Upcoming Task",
+                    `"${originalTask.text}" starts in 5 minutes.`,
+                    triggerDate
+                );
+            }
+        }
+
+        const newTask = {
+            ...originalTask,
+            id: Date.now().toString(),
+            scheduledAt: newDate ? newDate.toISOString() : null,
+            notificationId,
+            isEvent: !!newDate,
+            // Reset completion if desired, or keep as is? Usually duplicate implies a new todo
+            completed: false,
+        };
+
+        const newTasks = [...tasks, newTask];
+        // Sort by priority or date? updateTasks might not sort, key logic handles it
+        updateTasks(newTasks);
+    };
+
     return (
         <AppContext.Provider
             value={{
@@ -298,6 +330,7 @@ export const AppProvider = ({ children }) => {
                 updateTaskTime,
                 updateTaskSchedule,
                 cancelTaskSchedule,
+                duplicateTask,
                 calculatePriorityScore,
             }}
         >
