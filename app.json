@@ -2,7 +2,7 @@
   "expo": {
     "name": "TaskWise",
     "slug": "taskwise",
-    "version": "4.3.8",
+    "version": "4.3.9",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -17,7 +17,7 @@
     },
     "android": {
       "package": "com.BrightTomorrow.TaskWise",
-      "versionCode": 18,
+      "versionCode": 19,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
