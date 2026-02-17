@@ -1,6 +1,6 @@
 {
   "name": "taskwise",
-  "version": "4.3.7",
+  "version": "4.3.8",
   "main": "index.js",
   "scripts": {
     "start": "expo start",
@@ -39,6 +39,7 @@
   },
   "private": true,
   "devDependencies": {
+    "eas-cli": "^18.0.1",
     "firebase-tools": "^15.4.0"
   }
 }

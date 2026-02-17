@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
     StyleSheet,
     Text,
@@ -8,6 +8,7 @@ import {
     Modal,
     TextInput,
     Alert,
+    Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -33,7 +34,9 @@ import Animated, {
     withSpring,
     Easing,
     useAnimatedStyle,
+    runOnJS,
 } from 'react-native-reanimated';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
 function KeepAwakeWrapper() {
     useKeepAwake();
@@ -68,6 +71,7 @@ export default function TimerScreen({ navigation, route }) {
 
     // Settings State
     const [durations, setDurations] = useState(DEFAULT_DURATIONS);
+    const [showBreaks, setShowBreaks] = useState(true);
     const [currentMode, setCurrentMode] = useState(MODES.WORK);
     const [showSettings, setShowSettings] = useState(false);
 
@@ -75,6 +79,14 @@ export default function TimerScreen({ navigation, route }) {
     const [timeLeft, setTimeLeft] = useState(DEFAULT_DURATIONS[MODES.WORK] * 60);
     const [isActive, setIsActive] = useState(false);
     const lastTickRef = useRef(Date.now());
+    const timeLeftRef = useRef(timeLeft);
+
+    // Session duration tracks the "total" for the current session (temporary adjustments)
+    const sessionDurationRef = useRef(DEFAULT_DURATIONS[MODES.WORK] * 60);
+
+    // Gesture state in shared values for worklet access
+    const currentTimeSV = useSharedValue(DEFAULT_DURATIONS[MODES.WORK] * 60);
+    const storedStartTimeSV = useSharedValue(0);
 
     // Animation Values
     const progress = useSharedValue(1);
@@ -85,29 +97,78 @@ export default function TimerScreen({ navigation, route }) {
         loadSettings();
     }, []);
 
+    // Navigation guard: prevent going back while timer is active or paused
+    useEffect(() => {
+        const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+            const isSessionInProgress = isActive || (timeLeftRef.current < sessionDurationRef.current && timeLeftRef.current > 0);
+
+            if (!isSessionInProgress) return;
+
+            e.preventDefault();
+            Alert.alert(
+                'Stop Timer?',
+                'Going back will break your focus session. Are you sure?',
+                [
+                    { text: 'Stay', style: 'cancel' },
+                    {
+                        text: 'Leave',
+                        style: 'destructive',
+                        onPress: () => {
+                            setIsActive(false);
+                            navigation.dispatch(e.data.action);
+                        },
+                    },
+                ]
+            );
+        });
+        return unsubscribe;
+    }, [navigation, isActive]);
+
     // Effect to update time left when mode changes or durations load
     useEffect(() => {
         if (!isActive) {
-            setTimeLeft(durations[currentMode] * 60);
+            const newTime = durations[currentMode] * 60;
+            setTimeLeft(newTime);
+            // Update shared value
+            currentTimeSV.value = newTime;
+            sessionDurationRef.current = newTime;
             progress.value = withTiming(1, { duration: 500 });
         }
     }, [currentMode, durations]);
+
+    // Keep shared value and ref in sync with state
+    useEffect(() => {
+        currentTimeSV.value = timeLeft;
+        timeLeftRef.current = timeLeft;
+    }, [timeLeft]);
 
     const loadSettings = async () => {
         try {
             const saved = await AsyncStorage.getItem(STORAGE_KEY_SETTINGS);
             if (saved) {
-                setDurations(JSON.parse(saved));
+                const parsed = JSON.parse(saved);
+                if (parsed.durations) {
+                    setDurations(parsed.durations);
+                    setShowBreaks(parsed.showBreaks !== undefined ? parsed.showBreaks : true);
+                } else {
+                    // Legacy format: settings were just durations
+                    setDurations(parsed);
+                }
             }
         } catch (e) {
             console.error(e);
         }
     };
 
-    const saveSettings = async (newDurations) => {
+    const saveSettings = async (newDurations, newShowBreaks) => {
         try {
-            await AsyncStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(newDurations));
+            await AsyncStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify({ durations: newDurations, showBreaks: newShowBreaks }));
             setDurations(newDurations);
+            setShowBreaks(newShowBreaks);
+            // If breaks are being hidden, switch to WORK mode
+            if (!newShowBreaks && currentMode !== MODES.WORK) {
+                setCurrentMode(MODES.WORK);
+            }
         } catch (e) {
             console.error(e);
         }
@@ -124,7 +185,7 @@ export default function TimerScreen({ navigation, route }) {
                 if (delta >= 1) {
                     setTimeLeft((prev) => {
                         const newVal = Math.max(0, prev - 1);
-                        progress.value = withTiming(newVal / (durations[currentMode] * 60), {
+                        progress.value = withTiming(newVal / sessionDurationRef.current, {
                             duration: 1000,
                             easing: Easing.linear,
                         });
@@ -163,9 +224,51 @@ export default function TimerScreen({ navigation, route }) {
 
     const resetTimer = () => {
         setIsActive(false);
-        setTimeLeft(durations[currentMode] * 60);
+        const newTime = durations[currentMode] * 60;
+        setTimeLeft(newTime);
+        sessionDurationRef.current = newTime;
         progress.value = withTiming(1, { duration: 500 });
     };
+
+    // Gesture handler for scroll-to-adjust (analog timer feel)
+    const updateTimeFromGesture = useCallback((newSeconds) => {
+        setTimeLeft(newSeconds);
+    }, []);
+
+    const snapToMinute = useCallback((finalSeconds) => {
+        // Snap to nearest minute on release
+        const snapped = Math.round(finalSeconds / 60) * 60;
+        const clamped = Math.max(60, Math.min(180 * 60, snapped));
+        setTimeLeft(clamped);
+        sessionDurationRef.current = clamped;
+        progress.value = withTiming(1, { duration: 300 });
+    }, []);
+
+    const panGesture = useMemo(() => Gesture.Pan()
+        .onStart(() => {
+            'worklet';
+            storedStartTimeSV.value = currentTimeSV.value;
+        })
+        .onUpdate((e) => {
+            'worklet';
+            // Fine sensitivity: ~5px per 15 seconds for analog feel
+            const secondsDelta = Math.round(-e.translationY / 5) * 15;
+            const startTime = storedStartTimeSV.value;
+            const newSeconds = Math.max(60, Math.min(180 * 60, startTime + secondsDelta));
+            // Update session duration live so progress ring winds/unwinds
+            const newDuration = Math.max(startTime, newSeconds);
+            progress.value = newSeconds / newDuration;
+            runOnJS(updateTimeFromGesture)(newSeconds);
+        })
+        .onFinalize((e) => {
+            'worklet';
+            const secondsDelta = Math.round(-e.translationY / 5) * 15;
+            const startTime = storedStartTimeSV.value;
+            const finalSeconds = Math.max(60, Math.min(180 * 60, startTime + secondsDelta));
+            runOnJS(snapToMinute)(finalSeconds);
+        })
+        .minDistance(5),
+        [updateTimeFromGesture, snapToMinute]);
 
     const formatCountdown = (seconds) => {
         const mins = Math.floor(seconds / 60);
@@ -197,6 +300,7 @@ export default function TimerScreen({ navigation, route }) {
 
     const renderSettingsModal = () => {
         const [tempDurations, setTempDurations] = useState(durations);
+        const [tempShowBreaks, setTempShowBreaks] = useState(showBreaks);
 
         return (
             <Modal
@@ -223,29 +327,44 @@ export default function TimerScreen({ navigation, route }) {
                                 onChangeText={(v) => setTempDurations(p => ({ ...p, [MODES.WORK]: parseInt(v) || 0 }))}
                             />
                         </View>
-                        <View style={styles.settingItem}>
-                            <Text style={styles.settingLabel}>Short Break (min)</Text>
-                            <TextInput
-                                style={styles.settingInput}
-                                keyboardType="number-pad"
-                                value={String(tempDurations[MODES.SHORT_BREAK])}
-                                onChangeText={(v) => setTempDurations(p => ({ ...p, [MODES.SHORT_BREAK]: parseInt(v) || 0 }))}
+
+                        <View style={[styles.settingItem, styles.settingRow]}>
+                            <Text style={styles.settingLabel}>Enable Breaks</Text>
+                            <Switch
+                                value={tempShowBreaks}
+                                onValueChange={setTempShowBreaks}
+                                trackColor={{ false: '#334155', true: '#6366f1' }}
+                                thumbColor={tempShowBreaks ? '#c7d2fe' : '#94a3b8'}
                             />
                         </View>
-                        <View style={styles.settingItem}>
-                            <Text style={styles.settingLabel}>Long Break (min)</Text>
-                            <TextInput
-                                style={styles.settingInput}
-                                keyboardType="number-pad"
-                                value={String(tempDurations[MODES.LONG_BREAK])}
-                                onChangeText={(v) => setTempDurations(p => ({ ...p, [MODES.LONG_BREAK]: parseInt(v) || 0 }))}
-                            />
-                        </View>
+
+                        {tempShowBreaks && (
+                            <>
+                                <View style={styles.settingItem}>
+                                    <Text style={styles.settingLabel}>Short Break (min)</Text>
+                                    <TextInput
+                                        style={styles.settingInput}
+                                        keyboardType="number-pad"
+                                        value={String(tempDurations[MODES.SHORT_BREAK])}
+                                        onChangeText={(v) => setTempDurations(p => ({ ...p, [MODES.SHORT_BREAK]: parseInt(v) || 0 }))}
+                                    />
+                                </View>
+                                <View style={styles.settingItem}>
+                                    <Text style={styles.settingLabel}>Long Break (min)</Text>
+                                    <TextInput
+                                        style={styles.settingInput}
+                                        keyboardType="number-pad"
+                                        value={String(tempDurations[MODES.LONG_BREAK])}
+                                        onChangeText={(v) => setTempDurations(p => ({ ...p, [MODES.LONG_BREAK]: parseInt(v) || 0 }))}
+                                    />
+                                </View>
+                            </>
+                        )}
 
                         <TouchableOpacity
                             style={styles.saveButton}
                             onPress={() => {
-                                saveSettings(tempDurations);
+                                saveSettings(tempDurations, tempShowBreaks);
                                 setShowSettings(false);
                             }}
                         >
@@ -264,15 +383,19 @@ export default function TimerScreen({ navigation, route }) {
                     <ArrowLeft size={24} color="#f8fafc" />
                 </TouchableOpacity>
                 <View style={styles.modeSelector}>
-                    <TouchableOpacity onPress={() => { setIsActive(false); setCurrentMode(MODES.WORK); }}>
+                    <TouchableOpacity onPress={() => { if (!isActive) setCurrentMode(MODES.WORK); }}>
                         <Text style={[styles.modeText, currentMode === MODES.WORK && styles.activeModeText]}>Work</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => { setIsActive(false); setCurrentMode(MODES.SHORT_BREAK); }}>
-                        <Text style={[styles.modeText, currentMode === MODES.SHORT_BREAK && styles.activeModeText]}>Short</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => { setIsActive(false); setCurrentMode(MODES.LONG_BREAK); }}>
-                        <Text style={[styles.modeText, currentMode === MODES.LONG_BREAK && styles.activeModeText]}>Long</Text>
-                    </TouchableOpacity>
+                    {showBreaks && (
+                        <>
+                            <TouchableOpacity onPress={() => { if (!isActive) setCurrentMode(MODES.SHORT_BREAK); }}>
+                                <Text style={[styles.modeText, currentMode === MODES.SHORT_BREAK && styles.activeModeText]}>Short</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => { if (!isActive) setCurrentMode(MODES.LONG_BREAK); }}>
+                                <Text style={[styles.modeText, currentMode === MODES.LONG_BREAK && styles.activeModeText]}>Long</Text>
+                            </TouchableOpacity>
+                        </>
+                    )}
                 </View>
                 <TouchableOpacity onPress={() => setShowSettings(true)} style={styles.iconButton}>
                     <Settings size={24} color="#f8fafc" />
@@ -295,37 +418,42 @@ export default function TimerScreen({ navigation, route }) {
                     )}
                 </View>
 
-                <Animated.View style={[styles.timerWrapper, breathingStyle]}>
-                    <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE}>
-                        <Circle
-                            cx={CIRCLE_SIZE / 2}
-                            cy={CIRCLE_SIZE / 2}
-                            r={RADIUS}
-                            stroke="#1e293b"
-                            strokeWidth={STROKE_WIDTH}
-                            fill="transparent"
-                        />
-                        <AnimatedCircle
-                            cx={CIRCLE_SIZE / 2}
-                            cy={CIRCLE_SIZE / 2}
-                            r={RADIUS}
-                            stroke={getModeColor()}
-                            strokeWidth={STROKE_WIDTH}
-                            fill="transparent"
-                            strokeDasharray={`${CIRCUMFERENCE} ${CIRCUMFERENCE}`}
-                            animatedProps={animatedCircleProps}
-                            strokeLinecap="round"
-                            rotation="-90"
-                            origin={`${CIRCLE_SIZE / 2}, ${CIRCLE_SIZE / 2}`}
-                        />
-                    </Svg>
-                    <View style={styles.timerTextContainer}>
-                        <Text style={styles.timerText}>{formatCountdown(timeLeft)}</Text>
-                        <Text style={[styles.timerLabel, { color: getModeColor() }]}>
-                            {isActive ? 'FOCUS' : 'PAUSED'}
-                        </Text>
-                    </View>
-                </Animated.View>
+                <GestureDetector gesture={panGesture}>
+                    <Animated.View style={[styles.timerWrapper, breathingStyle]}>
+                        <Svg width={CIRCLE_SIZE} height={CIRCLE_SIZE}>
+                            <Circle
+                                cx={CIRCLE_SIZE / 2}
+                                cy={CIRCLE_SIZE / 2}
+                                r={RADIUS}
+                                stroke="#1e293b"
+                                strokeWidth={STROKE_WIDTH}
+                                fill="transparent"
+                            />
+                            <AnimatedCircle
+                                cx={CIRCLE_SIZE / 2}
+                                cy={CIRCLE_SIZE / 2}
+                                r={RADIUS}
+                                stroke={getModeColor()}
+                                strokeWidth={STROKE_WIDTH}
+                                fill="transparent"
+                                strokeDasharray={`${CIRCUMFERENCE} ${CIRCUMFERENCE}`}
+                                animatedProps={animatedCircleProps}
+                                strokeLinecap="round"
+                                rotation="-90"
+                                origin={`${CIRCLE_SIZE / 2}, ${CIRCLE_SIZE / 2}`}
+                            />
+                        </Svg>
+                        <View style={styles.timerTextContainer}>
+                            <Text style={styles.timerText}>{formatCountdown(timeLeft)}</Text>
+                            <Text style={[styles.timerLabel, { color: getModeColor() }]}>
+                                {isActive ? 'FOCUS' : 'PAUSED'}
+                            </Text>
+                        </View>
+                    </Animated.View>
+                </GestureDetector>
+                {!isActive && (
+                    <Text style={styles.scrollHint}>Scroll on timer to adjust</Text>
+                )}
 
                 <View style={styles.controls}>
                     <TouchableOpacity
@@ -428,7 +556,13 @@ const styles = StyleSheet.create({
     timerWrapper: {
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 60,
+        marginBottom: 20,
+    },
+    scrollHint: {
+        color: '#475569',
+        fontSize: 12,
+        marginBottom: 30,
+        letterSpacing: 1,
     },
     timerTextContainer: {
         position: 'absolute',
@@ -497,6 +631,11 @@ const styles = StyleSheet.create({
     },
     settingItem: {
         marginBottom: 16,
+    },
+    settingRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
     },
     settingLabel: {
         color: '#94a3b8',
