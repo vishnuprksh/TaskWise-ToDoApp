@@ -65,6 +65,93 @@ const DEFAULT_DURATIONS = {
 
 const STORAGE_KEY_SETTINGS = '@taskwise_timer_settings';
 
+const TimerSettingsModal = ({ visible, onClose, onSave, initialDurations, initialShowBreaks }) => {
+    const [tempDurations, setTempDurations] = useState(initialDurations);
+    const [tempShowBreaks, setTempShowBreaks] = useState(initialShowBreaks);
+
+    useEffect(() => {
+        if (visible) {
+            setTempDurations(initialDurations);
+            setTempShowBreaks(initialShowBreaks);
+        }
+    }, [visible, initialDurations, initialShowBreaks]);
+
+    const handleSave = () => {
+        onSave(tempDurations, tempShowBreaks);
+        onClose();
+    };
+
+    return (
+        <Modal
+            visible={visible}
+            transparent={true}
+            animationType="slide"
+            onRequestClose={onClose}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <View style={styles.modalHeader}>
+                        <Text style={styles.modalTitle}>Timer Settings</Text>
+                        <TouchableOpacity onPress={onClose}>
+                            <X size={24} color="#f8fafc" />
+                        </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.settingItem}>
+                        <Text style={styles.settingLabel}>Work (min)</Text>
+                        <TextInput
+                            style={styles.settingInput}
+                            keyboardType="number-pad"
+                            value={String(tempDurations[MODES.WORK])}
+                            onChangeText={(v) => setTempDurations(p => ({ ...p, [MODES.WORK]: parseInt(v) || 0 }))}
+                        />
+                    </View>
+
+                    <View style={[styles.settingItem, styles.settingRow]}>
+                        <Text style={styles.settingLabel}>Enable Breaks</Text>
+                        <Switch
+                            value={tempShowBreaks}
+                            onValueChange={setTempShowBreaks}
+                            trackColor={{ false: '#334155', true: '#6366f1' }}
+                            thumbColor={tempShowBreaks ? '#c7d2fe' : '#94a3b8'}
+                        />
+                    </View>
+
+                    {tempShowBreaks && (
+                        <>
+                            <View style={styles.settingItem}>
+                                <Text style={styles.settingLabel}>Short Break (min)</Text>
+                                <TextInput
+                                    style={styles.settingInput}
+                                    keyboardType="number-pad"
+                                    value={String(tempDurations[MODES.SHORT_BREAK])}
+                                    onChangeText={(v) => setTempDurations(p => ({ ...p, [MODES.SHORT_BREAK]: parseInt(v) || 0 }))}
+                                />
+                            </View>
+                            <View style={styles.settingItem}>
+                                <Text style={styles.settingLabel}>Long Break (min)</Text>
+                                <TextInput
+                                    style={styles.settingInput}
+                                    keyboardType="number-pad"
+                                    value={String(tempDurations[MODES.LONG_BREAK])}
+                                    onChangeText={(v) => setTempDurations(p => ({ ...p, [MODES.LONG_BREAK]: parseInt(v) || 0 }))}
+                                />
+                            </View>
+                        </>
+                    )}
+
+                    <TouchableOpacity
+                        style={styles.saveButton}
+                        onPress={handleSave}
+                    >
+                        <Text style={styles.saveButtonText}>Save Changes</Text>
+                    </TouchableOpacity>
+                </View>
+            </View>
+        </Modal>
+    );
+};
+
 export default function TimerScreen({ navigation, route }) {
     const { task } = route.params;
     const { updateTaskTime } = useApp();
@@ -298,83 +385,7 @@ export default function TimerScreen({ navigation, route }) {
         }
     };
 
-    const renderSettingsModal = () => {
-        const [tempDurations, setTempDurations] = useState(durations);
-        const [tempShowBreaks, setTempShowBreaks] = useState(showBreaks);
 
-        return (
-            <Modal
-                visible={showSettings}
-                transparent={true}
-                animationType="slide"
-                onRequestClose={() => setShowSettings(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Timer Settings</Text>
-                            <TouchableOpacity onPress={() => setShowSettings(false)}>
-                                <X size={24} color="#f8fafc" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={styles.settingItem}>
-                            <Text style={styles.settingLabel}>Work (min)</Text>
-                            <TextInput
-                                style={styles.settingInput}
-                                keyboardType="number-pad"
-                                value={String(tempDurations[MODES.WORK])}
-                                onChangeText={(v) => setTempDurations(p => ({ ...p, [MODES.WORK]: parseInt(v) || 0 }))}
-                            />
-                        </View>
-
-                        <View style={[styles.settingItem, styles.settingRow]}>
-                            <Text style={styles.settingLabel}>Enable Breaks</Text>
-                            <Switch
-                                value={tempShowBreaks}
-                                onValueChange={setTempShowBreaks}
-                                trackColor={{ false: '#334155', true: '#6366f1' }}
-                                thumbColor={tempShowBreaks ? '#c7d2fe' : '#94a3b8'}
-                            />
-                        </View>
-
-                        {tempShowBreaks && (
-                            <>
-                                <View style={styles.settingItem}>
-                                    <Text style={styles.settingLabel}>Short Break (min)</Text>
-                                    <TextInput
-                                        style={styles.settingInput}
-                                        keyboardType="number-pad"
-                                        value={String(tempDurations[MODES.SHORT_BREAK])}
-                                        onChangeText={(v) => setTempDurations(p => ({ ...p, [MODES.SHORT_BREAK]: parseInt(v) || 0 }))}
-                                    />
-                                </View>
-                                <View style={styles.settingItem}>
-                                    <Text style={styles.settingLabel}>Long Break (min)</Text>
-                                    <TextInput
-                                        style={styles.settingInput}
-                                        keyboardType="number-pad"
-                                        value={String(tempDurations[MODES.LONG_BREAK])}
-                                        onChangeText={(v) => setTempDurations(p => ({ ...p, [MODES.LONG_BREAK]: parseInt(v) || 0 }))}
-                                    />
-                                </View>
-                            </>
-                        )}
-
-                        <TouchableOpacity
-                            style={styles.saveButton}
-                            onPress={() => {
-                                saveSettings(tempDurations, tempShowBreaks);
-                                setShowSettings(false);
-                            }}
-                        >
-                            <Text style={styles.saveButtonText}>Save Changes</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
-        );
-    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -472,7 +483,13 @@ export default function TimerScreen({ navigation, route }) {
                 </View>
                 {isActive && <KeepAwakeWrapper />}
             </View>
-            {renderSettingsModal()}
+            <TimerSettingsModal
+                visible={showSettings}
+                onClose={() => setShowSettings(false)}
+                onSave={saveSettings}
+                initialDurations={durations}
+                initialShowBreaks={showBreaks}
+            />
         </SafeAreaView>
     );
 }
