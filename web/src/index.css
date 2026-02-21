@@ -31,8 +31,11 @@ html, body, #root {
 }
 
 .sidebar-header {
-  padding: 24px 20px;
+  height: 96px;
+  padding: 0 20px;
   border-bottom: 1px solid #334155;
+  display: flex;
+  align-items: center;
 }
 
 .sidebar-logo {
@@ -160,7 +163,8 @@ html, body, #root {
 }
 
 .page-header {
-  padding: 24px 32px;
+  height: 96px;
+  padding: 0 32px;
   border-bottom: 1px solid #334155;
   display: flex;
   align-items: center;
@@ -300,6 +304,17 @@ html, body, #root {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
+.task-item.has-upcoming {
+  border-left: 4px solid #f43f5e;
+  border-left-color: #f43f5e;
+  background: linear-gradient(90deg, rgba(244, 63, 94, 0.05) 0%, rgba(30, 41, 59, 1) 15%);
+}
+
+.task-item.has-upcoming:hover {
+  border-left-width: 6px;
+  background: linear-gradient(90deg, rgba(244, 63, 94, 0.08) 0%, rgba(30, 41, 59, 1) 15%);
+}
+
 .task-left {
   display: flex;
   align-items: flex-start;
@@ -363,6 +378,18 @@ html, body, #root {
 .time-tag {
   background: rgba(51, 65, 85, 0.25);
   color: #94a3b8;
+}
+
+.upcoming-tag {
+  background: rgba(244, 63, 94, 0.12);
+  color: #f43f5e;
+  border: 1px solid rgba(244, 63, 94, 0.2);
+}
+
+.past-tag {
+  background: rgba(226, 232, 240, 0.05);
+  color: #64748b;
+  opacity: 0.7;
 }
 
 .task-actions {
@@ -848,6 +875,28 @@ html, body, #root {
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
 }
 
+.calendar-event.resizing {
+  z-index: 50;
+  transform: none;
+  opacity: 0.9;
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+}
+
+.calendar-event-resize-handle {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 8px;
+  cursor: ns-resize;
+  background: rgba(0, 0, 0, 0.1);
+  transition: background 0.2s;
+}
+
+.calendar-event-resize-handle:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 .calendar-event.past {
   opacity: 0.7;
   filter: grayscale(0.5);
@@ -1280,11 +1329,15 @@ html, body, #root {
     display: flex !important;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 20px;
+    height: 64px;
+    padding: 0 20px;
     border-bottom: 1px solid #334155;
   }
 
-  .page-header { padding: 16px 20px; }
+  .page-header { 
+    height: 72px;
+    padding: 0 20px;
+  }
   .page-body { padding: 16px 20px; }
 }
 

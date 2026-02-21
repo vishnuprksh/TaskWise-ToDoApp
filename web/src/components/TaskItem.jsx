@@ -1,6 +1,6 @@
 import React from 'react';
 import { CheckCircle2, Circle, PlayCircle, Clock, Flag, CalendarRange, Trash2 } from 'lucide-react';
-import { formatTime, safeFormat, isValidDate } from '../utils/time';
+import { formatTime, safeFormat, isValidDate, isSameDay } from '../utils/time';
 
 export default function TaskItem({ item, project, onEdit, onToggle, onTimer, onDelete, onSchedule }) {
   const progress = (() => {
@@ -11,8 +11,10 @@ export default function TaskItem({ item, project, onEdit, onToggle, onTimer, onD
     return Math.min(100, Math.max(0, ((Date.now() - start) / (end - start)) * 100));
   })();
 
+  const isUpcoming = isValidDate(item.scheduledAt) && new Date(item.scheduledAt) > new Date();
+
   return (
-    <div className="task-item" onClick={() => onEdit(item)}>
+    <div className={`task-item ${isUpcoming ? 'has-upcoming' : ''}`} onClick={() => onEdit(item)}>
       <div className="task-left">
         <button
           className={`task-checkbox ${item.completed ? 'completed' : ''}`}
@@ -37,6 +39,14 @@ export default function TaskItem({ item, project, onEdit, onToggle, onTimer, onD
               <span className="task-tag time-tag">
                 <Clock size={12} />
                 {formatTime(item.timeSpent)}
+              </span>
+            )}
+            {isValidDate(item.scheduledAt) && (
+              <span className={`task-tag ${isUpcoming ? 'upcoming-tag' : 'past-tag'}`}>
+                <CalendarRange size={12} />
+                {isSameDay(new Date(item.scheduledAt), new Date()) 
+                  ? `Today at ${safeFormat(item.scheduledAt, 'h:mm a')}`
+                  : safeFormat(item.scheduledAt, 'MMM d, h:mm a')}
               </span>
             )}
           </div>

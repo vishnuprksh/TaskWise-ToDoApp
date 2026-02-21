@@ -1,10 +1,15 @@
-import { format, isValid } from 'date-fns';
+import { format, isValid, isSameDay as fnsIsSameDay } from 'date-fns';
 
 export const formatTime = (seconds) => {
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   if (hrs > 0) return `${hrs}h ${mins}m`;
   return `${mins}m`;
+};
+
+export const isSameDay = (d1, d2) => {
+  if (!d1 || !d2) return false;
+  return fnsIsSameDay(new Date(d1), new Date(d2));
 };
 
 export const isValidDate = (date) => {

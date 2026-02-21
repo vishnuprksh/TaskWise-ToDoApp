@@ -229,7 +229,7 @@ export const AppProvider = ({ children }) => {
     updateTasks(newTasks);
   };
 
-  const duplicateTask = (originalTaskId, newDate) => {
+  const duplicateTask = (originalTaskId, newDate, duration = 60) => {
     const originalTask = tasksRef.current.find((t) => t.id === originalTaskId);
     if (!originalTask) return;
 
@@ -237,6 +237,7 @@ export const AppProvider = ({ children }) => {
       ...originalTask,
       id: Date.now().toString(),
       scheduledAt: newDate ? newDate.toISOString() : null,
+      duration: duration || originalTask.duration || 60,
       isEvent: !!newDate,
       completed: false,
     };

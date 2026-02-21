@@ -14,9 +14,41 @@ export default function CalendarPage() {
   const [taskToEdit, setTaskToEdit] = useState(null);
   const scrollRef = useRef(null);
 
+  // Drag-to-resize state
+  const [resizingTask, setResizingTask] = useState(null);
+  const [resizeStartY, setResizeStartY] = useState(0);
+  const [resizeStartDuration, setResizeStartDuration] = useState(60);
+
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 6 });
   const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 6 });
   const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
+
+  // Handle global mouse move/up for resizing
+  useEffect(() => {
+    if (!resizingTask) return;
+
+    const handleMouseMove = (e) => {
+      const deltaY = e.clientY - resizeStartY;
+      const deltaMinutes = Math.round(deltaY / (HOUR_HEIGHT / 60) / 15) * 15; // Snap to 15 min
+      const newDuration = Math.max(15, resizeStartDuration + deltaMinutes);
+      
+      setResizingTask(prev => ({ ...prev, duration: newDuration }));
+    };
+
+    const handleMouseUp = () => {
+      if (resizingTask) {
+        updateTaskSchedule(resizingTask.id, new Date(resizingTask.scheduledAt), resizingTask.duration);
+      }
+      setResizingTask(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [resizingTask, resizeStartY, resizeStartDuration]);
 
   useEffect(() => {
     // Scroll to 6 AM on load
@@ -29,6 +61,13 @@ export default function CalendarPage() {
     return tasks.filter(
       (t) => isValidDate(t.scheduledAt) && isSameDay(new Date(t.scheduledAt), date)
     );
+  };
+
+  const startResize = (e, task) => {
+    e.stopPropagation();
+    setResizingTask(task);
+    setResizeStartY(e.clientY);
+    setResizeStartDuration(task.duration || 60);
   };
 
   const handleUpdateTask = (taskId, updates) => {
@@ -52,14 +91,14 @@ export default function CalendarPage() {
     setIsScheduleModalOpen(true);
   };
 
-  const handleScheduleUpdate = (taskId, date) => {
-    updateTaskSchedule(taskId, date);
+  const handleScheduleUpdate = (taskId, date, duration) => {
+    updateTaskSchedule(taskId, date, duration);
     setIsScheduleModalOpen(false);
     setTaskToEdit(null);
   };
 
-  const handleDuplicate = (taskId, date) => {
-    duplicateTask(taskId, date);
+  const handleDuplicate = (taskId, date, duration) => {
+    duplicateTask(taskId, date, duration);
     setIsScheduleModalOpen(false);
     setTaskToEdit(null);
   };
@@ -138,28 +177,39 @@ export default function CalendarPage() {
                   )}
 
                   {dayTasks.map((task) => {
-                    const startDate = new Date(task.scheduledAt);
+                    // Use resizing task if this is the one being resized
+                    const displayTask = (resizingTask && resizingTask.id === task.id) ? resizingTask : task;
+                    
+                    const startDate = new Date(displayTask.scheduledAt);
                     const startMinutes = startDate.getHours() * 60 + startDate.getMinutes();
-                    const duration = task.duration || 60;
+                    const duration = displayTask.duration || 60;
                     const top = startMinutes * (HOUR_HEIGHT / 60);
                     const height = duration * (HOUR_HEIGHT / 60);
-                    const project = getProject(task.projectId);
+                    const project = getProject(displayTask.projectId);
                     const endTime = new Date(startDate.getTime() + duration * 60000);
                     const isPast = endTime < new Date();
+                    const isResizing = resizingTask && resizingTask.id === task.id;
 
                     return (
                       <div
                         key={task.id}
-                        className={`calendar-event ${isPast ? 'past' : ''}`}
+                        className={`calendar-event ${isPast ? 'past' : ''} ${isResizing ? 'resizing' : ''}`}
                         style={{
                           top,
                           height,
                           backgroundColor: project ? project.color : '#6366f1',
                         }}
-                        onClick={() => handleEventPress(task)}
+                        onClick={() => !isResizing && handleEventPress(task)}
                       >
-                        <div className="calendar-event-text" title={task.text}>{task.text}</div>
-                        <div className="calendar-event-time">{safeFormat(startDate, 'h:mm a')}</div>
+                        <div className="calendar-event-text" title={displayTask.text}>{displayTask.text}</div>
+                        <div className="calendar-event-time">
+                          {safeFormat(startDate, 'h:mm a')} – {safeFormat(endTime, 'h:mm a')}
+                          {isResizing && ` (${duration}m)`}
+                        </div>
+                        <div 
+                          className="calendar-event-resize-handle" 
+                          onMouseDown={(e) => startResize(e, task)}
+                        />
                       </div>
                     );
                   })}

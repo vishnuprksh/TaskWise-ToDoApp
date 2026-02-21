@@ -9,6 +9,7 @@ export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, 
   const [hasTime, setHasTime] = useState(false);
   const [hours, setHours] = useState(9);
   const [minutes, setMinutes] = useState(0);
+  const [duration, setDuration] = useState(60);
 
   useEffect(() => {
     if (visible && isValidDate(initialDate)) {
@@ -17,6 +18,7 @@ export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, 
       setViewMonth(d);
       setHours(d.getHours());
       setMinutes(d.getMinutes());
+      setDuration(task.duration || 60);
       setHasTime(true);
     } else if (visible) {
       const now = new Date();
@@ -25,8 +27,9 @@ export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, 
       setHasTime(false);
       setHours(9);
       setMinutes(0);
+      setDuration(60);
     }
-  }, [visible, initialDate]);
+  }, [visible, initialDate, task]);
 
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(viewMonth);
@@ -49,12 +52,12 @@ export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, 
   };
 
   const handleSave = () => {
-    onSchedule(task.id, getFinalDate());
+    onSchedule(task.id, getFinalDate(), duration);
     onClose();
   };
 
   const handleDuplicate = () => {
-    onDuplicate?.(task.id, getFinalDate());
+    onDuplicate?.(task.id, getFinalDate(), duration);
     onClose();
   };
 
@@ -105,17 +108,32 @@ export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, 
 
         {hasTime && (
           <div className="time-input-row">
-            <select className="time-select" value={hours} onChange={(e) => setHours(Number(e.target.value))}>
-              {Array.from({ length: 24 }, (_, i) => (
-                <option key={i} value={i}>{i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`}</option>
-              ))}
-            </select>
-            <span style={{ color: '#94a3b8' }}>:</span>
-            <select className="time-select" value={minutes} onChange={(e) => setMinutes(Number(e.target.value))}>
-              {[0, 15, 30, 45].map((m) => (
-                <option key={m} value={m}>{String(m).padStart(2, '0')}</option>
-              ))}
-            </select>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flex: 1 }}>
+              <select className="time-select" value={hours} onChange={(e) => setHours(Number(e.target.value))}>
+                {Array.from({ length: 24 }, (_, i) => (
+                  <option key={i} value={i}>{i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i - 12} PM`}</option>
+                ))}
+              </select>
+              <span style={{ color: '#94a3b8' }}>:</span>
+              <select className="time-select" value={minutes} onChange={(e) => setMinutes(Number(e.target.value))}>
+                {[0, 15, 30, 45].map((m) => (
+                  <option key={m} value={m}>{String(m).padStart(2, '0')}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 13, color: '#94a3b8' }}>Duration:</span>
+              <select className="time-select" value={duration} onChange={(e) => setDuration(Number(e.target.value))}>
+                <option value={15}>15m</option>
+                <option value={30}>30m</option>
+                <option value={45}>45m</option>
+                <option value={60}>1h</option>
+                <option value={90}>1.5h</option>
+                <option value={120}>2h</option>
+                <option value={180}>3h</option>
+                <option value={240}>4h</option>
+              </select>
+            </div>
           </div>
         )}
 

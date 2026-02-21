@@ -89,8 +89,8 @@ export default function HomePage({ onNavigateTimer }) {
     setIsScheduleModalOpen(true);
   };
 
-  const handleScheduleTask = (taskId, date) => {
-    updateTaskSchedule(taskId, date);
+  const handleScheduleTask = (taskId, date, duration) => {
+    updateTaskSchedule(taskId, date, duration);
     setIsScheduleModalOpen(false);
     setTaskToSchedule(null);
   };
