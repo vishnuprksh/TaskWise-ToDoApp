@@ -172,8 +172,8 @@ export default function HomeScreen({ navigation }) {
         setIsScheduleModalVisible(true);
     };
 
-    const handleScheduleTask = (taskId, date) => {
-        updateTaskSchedule(taskId, date);
+    const handleScheduleTask = (taskId, date, duration) => {
+        updateTaskSchedule(taskId, date, duration);
         setIsScheduleModalVisible(false);
         setTaskToSchedule(null);
     };

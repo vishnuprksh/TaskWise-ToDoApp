@@ -160,14 +160,14 @@ export default function CalendarScreen({ navigation }) {
         setIsScheduleModalVisible(true);
     };
 
-    const handleScheduleUpdate = (taskId, date) => {
-        updateTaskSchedule(taskId, date);
+    const handleScheduleUpdate = (taskId, date, duration) => {
+        updateTaskSchedule(taskId, date, duration);
         setIsScheduleModalVisible(false);
         setTaskToEdit(null);
     };
 
-    const handleDuplicateEvent = (taskId, date) => {
-        duplicateTask(taskId, date);
+    const handleDuplicateEvent = (taskId, date, duration) => {
+        duplicateTask(taskId, date, duration);
         setIsScheduleModalVisible(false);
         setTaskToEdit(null);
     };

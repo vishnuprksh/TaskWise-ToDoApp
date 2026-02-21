@@ -280,7 +280,7 @@ export const AppProvider = ({ children }) => {
         updateTasks(newTasks);
     };
 
-    const duplicateTask = async (originalTaskId, newDate) => {
+    const duplicateTask = async (originalTaskId, newDate, duration = 60) => {
         const originalTask = tasks.find(t => t.id === originalTaskId);
         if (!originalTask) return;
 
@@ -301,6 +301,7 @@ export const AppProvider = ({ children }) => {
             ...originalTask,
             id: Date.now().toString(),
             scheduledAt: newDate ? newDate.toISOString() : null,
+            duration: duration || originalTask.duration || 60,
             notificationId,
             isEvent: !!newDate,
             // Reset completion if desired, or keep as is? Usually duplicate implies a new todo

@@ -11,20 +11,23 @@ export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, 
     const [hasTime, setHasTime] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
     const [selectedTime, setSelectedTime] = useState(new Date());
+    const [duration, setDuration] = useState(60);
 
     useEffect(() => {
         if (visible && isValidDate(initialDate)) {
             const dateObj = new Date(initialDate);
             setSelectedDate(format(dateObj, 'yyyy-MM-dd'));
             setSelectedTime(dateObj);
+            setDuration(task?.duration || 60);
             setHasTime(true);
         } else if (visible) {
             // Reset to defaults for new schedule 
             setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
             setHasTime(false);
             setSelectedTime(new Date());
+            setDuration(60);
         }
-    }, [visible, initialDate]);
+    }, [visible, initialDate, task]);
 
     const getFinalDate = () => {
         let finalDate = new Date(selectedDate);
@@ -38,12 +41,12 @@ export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, 
     };
 
     const handleSave = () => {
-        onSchedule(task.id, getFinalDate());
+        onSchedule(task.id, getFinalDate(), duration);
         onClose();
     };
 
     const handleDuplicate = () => {
-        onDuplicate?.(task.id, getFinalDate());
+        onDuplicate?.(task.id, getFinalDate(), duration);
         onClose();
     };
 
@@ -152,6 +155,23 @@ export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, 
                                         />
                                     </View>
                                 )}
+
+                                <View style={styles.durationSection}>
+                                    <Text style={styles.durationLabel}>Duration:</Text>
+                                    <View style={styles.durationButtons}>
+                                        {[15, 30, 45, 60, 90, 120].map((d) => (
+                                            <TouchableOpacity
+                                                key={d}
+                                                style={[styles.durationButton, duration === d && styles.durationButtonActive]}
+                                                onPress={() => setDuration(d)}
+                                            >
+                                                <Text style={[styles.durationButtonText, duration === d && styles.durationButtonTextActive]}>
+                                                    {d < 60 ? `${d}m` : `${d / 60}h`}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
                             </View>
                         )}
                     </View>
@@ -326,5 +346,39 @@ const styles = StyleSheet.create({
         color: '#f8fafc',
         fontSize: 18,
         fontWeight: '600',
+    },
+    durationSection: {
+        marginTop: 16,
+    },
+    durationLabel: {
+        fontSize: 14,
+        color: '#94a3b8',
+        marginBottom: 8,
+        fontWeight: '600',
+    },
+    durationButtons: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    durationButton: {
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        backgroundColor: '#33415540',
+        borderWidth: 1,
+        borderColor: '#334155',
+    },
+    durationButtonActive: {
+        backgroundColor: '#6366f120',
+        borderColor: '#6366f1',
+    },
+    durationButtonText: {
+        color: '#94a3b8',
+        fontSize: 13,
+        fontWeight: '600',
+    },
+    durationButtonTextActive: {
+        color: '#6366f1',
     },
 });
