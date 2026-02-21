@@ -5,13 +5,14 @@ import HomePage from './pages/HomePage';
 import ProjectsPage from './pages/ProjectsPage';
 import CalendarPage from './pages/CalendarPage';
 import TimerPage from './pages/TimerPage';
-import SettingsPage from './pages/SettingsPage';
+import SettingsModal from './components/SettingsModal';
 
 function AppShell() {
   const { user, isSyncing } = useApp();
   const [currentPage, setCurrentPage] = useState('home');
   const [timerTask, setTimerTask] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const navigateTimer = (task) => {
     setTimerTask(task);
@@ -29,7 +30,6 @@ function AppShell() {
       case 'home': return <HomePage onNavigateTimer={navigateTimer} />;
       case 'projects': return <ProjectsPage />;
       case 'calendar': return <CalendarPage />;
-      case 'settings': return <SettingsPage />;
       case 'timer': return timerTask ? <TimerPage task={timerTask} onBack={() => setCurrentPage('home')} /> : <HomePage onNavigateTimer={navigateTimer} />;
       default: return <HomePage onNavigateTimer={navigateTimer} />;
     }
@@ -69,7 +69,7 @@ function AppShell() {
             </div>
           )}
           {user ? (
-            <div className={`user-card ${currentPage === 'settings' ? 'active' : ''}`} onClick={() => { setCurrentPage('settings'); setSidebarOpen(false); }}>
+            <div className={`user-card ${showSettings ? 'active' : ''}`} onClick={() => { setShowSettings(true); setSidebarOpen(false); }}>
               {user.photoURL ? (
                 <img src={user.photoURL} alt="" className="user-avatar" />
               ) : (
@@ -85,7 +85,7 @@ function AppShell() {
               </div>
             </div>
           ) : (
-            <button className={`nav-item ${currentPage === 'settings' ? 'active' : ''}`} onClick={() => { setCurrentPage('settings'); setSidebarOpen(false); }}>
+            <button className={`nav-item ${showSettings ? 'active' : ''}`} onClick={() => { setShowSettings(true); setSidebarOpen(false); }}>
               <Settings size={20} />
               Sign In
             </button>
@@ -103,6 +103,9 @@ function AppShell() {
         </div>
         {renderPage()}
       </main>
+
+      {/* Settings Modal */}
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </div>
   );
 }

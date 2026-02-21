@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { format, addDays, subDays, isSameDay } from 'date-fns';
+import { format, addDays, subDays, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
 import { useApp } from '../context/AppContext';
 import { isValidDate, safeFormat } from '../utils/time';
 import ScheduleModal from '../components/ScheduleModal';
@@ -14,16 +14,22 @@ export default function CalendarPage() {
   const [taskToEdit, setTaskToEdit] = useState(null);
   const scrollRef = useRef(null);
 
+  const weekStart = startOfWeek(selectedDate, { weekStartsOn: 6 });
+  const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 6 });
+  const weekDays = eachDayOfInterval({ start: weekStart, end: weekEnd });
+
   useEffect(() => {
-    // Scroll to ~8 AM on load
+    // Scroll to 6 AM on load
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = 8 * HOUR_HEIGHT - 40;
+      scrollRef.current.scrollTop = 6 * HOUR_HEIGHT;
     }
   }, []);
 
-  const dayTasks = tasks.filter(
-    (t) => isValidDate(t.scheduledAt) && isSameDay(new Date(t.scheduledAt), selectedDate)
-  );
+  const getDayTasks = (date) => {
+    return tasks.filter(
+      (t) => isValidDate(t.scheduledAt) && isSameDay(new Date(t.scheduledAt), date)
+    );
+  };
 
   const handleUpdateTask = (taskId, updates) => {
     const task = tasks.find((t) => t.id === taskId);
@@ -86,14 +92,15 @@ export default function CalendarPage() {
       <div className="page-header">
         <h2>Calendar</h2>
         <div className="calendar-nav">
-          <button onClick={() => setSelectedDate(subDays(selectedDate, 1))}><ChevronLeft size={22} /></button>
+          <button onClick={() => setSelectedDate(subDays(selectedDate, 7))}><ChevronLeft size={22} /></button>
           <div style={{ textAlign: 'center', cursor: 'pointer' }} onDoubleClick={() => setSelectedDate(new Date())}>
-            <div className="calendar-date-title">{format(selectedDate, 'MMMM d')}</div>
-            <div className="calendar-date-subtitle">{format(selectedDate, 'EEEE')}</div>
+            <div className="calendar-date-title">
+              {format(weekStart, 'MMM d')} – {format(weekEnd, isSameDay(weekStart, weekEnd) ? 'MMM d' : 'MMM d, yyyy')}
+            </div>
           </div>
-          <button onClick={() => setSelectedDate(addDays(selectedDate, 1))}><ChevronRight size={22} /></button>
+          <button onClick={() => setSelectedDate(addDays(selectedDate, 7))}><ChevronRight size={22} /></button>
         </div>
-        <div style={{ width: 100 }}>
+        <div style={{ width: 140 }}>
           <input
             type="date"
             className="form-input"
@@ -104,44 +111,62 @@ export default function CalendarPage() {
         </div>
       </div>
 
+      <div className="calendar-grid-header">
+        {weekDays.map((date) => (
+          <div key={date.toString()} className={`calendar-day-header ${isSameDay(date, new Date()) ? 'today' : ''}`}>
+            <div className="calendar-day-name">{format(date, 'EEE')}</div>
+            <div className="calendar-day-number">{format(date, 'd')}</div>
+          </div>
+        ))}
+      </div>
+
       <div className="page-body" ref={scrollRef} style={{ padding: 0 }}>
         <div className="timeline-container">
-          {renderTimeLines()}
+          <div className="time-grid-background">
+            {renderTimeLines()}
+          </div>
 
-          {/* Current time line */}
-          {isSameDay(selectedDate, new Date()) && (
-            <div className="current-time-line" style={{ top: nowMinutes * (HOUR_HEIGHT / 60) }}>
-              <div className="current-time-dot" />
-            </div>
-          )}
+          <div className="calendar-columns">
+            {weekDays.map((date) => {
+              const isToday = isSameDay(date, new Date());
+              const dayTasks = getDayTasks(date);
 
-          {/* Events */}
-          {dayTasks.map((task) => {
-            const startDate = isValidDate(task.scheduledAt) ? new Date(task.scheduledAt) : new Date();
-            const startMinutes = startDate.getHours() * 60 + startDate.getMinutes();
-            const duration = task.duration || 60;
-            const top = startMinutes * (HOUR_HEIGHT / 60);
-            const height = duration * (HOUR_HEIGHT / 60);
-            const project = getProject(task.projectId);
-            const endTime = new Date(startDate.getTime() + duration * 60000);
-            const isPast = endTime < new Date();
+              return (
+                <div key={date.toString()} className={`calendar-column ${isToday ? 'today' : ''}`}>
+                  {isToday && (
+                    <div className="current-time-line" style={{ top: nowMinutes * (HOUR_HEIGHT / 60) }} />
+                  )}
 
-            return (
-              <div
-                key={task.id}
-                className={`calendar-event ${isPast ? 'past' : ''}`}
-                style={{
-                  top,
-                  height,
-                  backgroundColor: project ? project.color : '#6366f1',
-                }}
-                onClick={() => handleEventPress(task)}
-              >
-                <div className="calendar-event-text">{task.text}</div>
-                <div className="calendar-event-time">{safeFormat(startDate, 'h:mm a')}</div>
-              </div>
-            );
-          })}
+                  {dayTasks.map((task) => {
+                    const startDate = new Date(task.scheduledAt);
+                    const startMinutes = startDate.getHours() * 60 + startDate.getMinutes();
+                    const duration = task.duration || 60;
+                    const top = startMinutes * (HOUR_HEIGHT / 60);
+                    const height = duration * (HOUR_HEIGHT / 60);
+                    const project = getProject(task.projectId);
+                    const endTime = new Date(startDate.getTime() + duration * 60000);
+                    const isPast = endTime < new Date();
+
+                    return (
+                      <div
+                        key={task.id}
+                        className={`calendar-event ${isPast ? 'past' : ''}`}
+                        style={{
+                          top,
+                          height,
+                          backgroundColor: project ? project.color : '#6366f1',
+                        }}
+                        onClick={() => handleEventPress(task)}
+                      >
+                        <div className="calendar-event-text" title={task.text}>{task.text}</div>
+                        <div className="calendar-event-time">{safeFormat(startDate, 'h:mm a')}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 
