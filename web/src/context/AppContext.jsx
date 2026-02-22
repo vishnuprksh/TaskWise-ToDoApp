@@ -2,6 +2,8 @@ import React, { createContext, useState, useContext, useEffect, useRef, useCallb
 import * as AuthService from '../services/AuthService';
 import * as SyncService from '../services/SyncService';
 import { calculatePriorityScore } from '../utils/priority';
+import { isValidDate } from '../utils/time';
+import { isSameDay } from 'date-fns';
 
 const AppContext = createContext();
 
@@ -50,8 +52,9 @@ export const AppProvider = ({ children }) => {
         tasksRef.current,
         projectsRef.current
       );
-      setTasks(syncedTasks);
-      saveTasks(syncedTasks);
+      const sortedSyncedTasks = [...syncedTasks].sort((a, b) => b.priorityScore - a.priorityScore);
+      setTasks(sortedSyncedTasks);
+      saveTasks(sortedSyncedTasks);
       setProjects(syncedProjects);
       saveProjects(syncedProjects);
     } catch (error) {
@@ -124,6 +127,8 @@ export const AppProvider = ({ children }) => {
           }
           return task;
         });
+        // Sort tasks by priority score (descending)
+        parsedTasks.sort((a, b) => b.priorityScore - a.priorityScore);
         setTasks(parsedTasks);
       }
 
@@ -158,21 +163,24 @@ export const AppProvider = ({ children }) => {
   };
 
   const updateTasks = (newTasks) => {
+    // Sort tasks by priority score (descending) before saving
+    const sortedTasks = [...newTasks].sort((a, b) => b.priorityScore - a.priorityScore);
+
     if (userRef.current) {
-      newTasks.forEach((newTask) => {
+      sortedTasks.forEach((newTask) => {
         const oldTask = tasksRef.current.find((t) => t.id === newTask.id);
         if (!oldTask || JSON.stringify(oldTask) !== JSON.stringify(newTask)) {
           SyncService.saveTaskToCloud(newTask);
         }
       });
       tasksRef.current.forEach((oldTask) => {
-        if (!newTasks.find((t) => t.id === oldTask.id)) {
+        if (!sortedTasks.find((t) => t.id === oldTask.id)) {
           SyncService.deleteTaskFromCloud(oldTask.id);
         }
       });
     }
-    setTasks(newTasks);
-    saveTasks(newTasks);
+    setTasks(sortedTasks);
+    saveTasks(sortedTasks);
   };
 
   const updateProjects = (newProjects) => {
@@ -204,14 +212,58 @@ export const AppProvider = ({ children }) => {
     updateTasks(newTasks);
   };
 
-  const updateTaskSchedule = (taskId, date, duration = 60) => {
+  const findNextAvailableSlot = (date, duration) => {
+    const dayStart = new Date(date);
+    dayStart.setHours(9, 0, 0, 0); // Default start at 9 AM for future days
+    const now = new Date();
+    const startTime = isSameDay(date, now) ? now : dayStart; // For today, start from current time; for future days, from 9 AM
+
+    // Get all tasks on this day
+    const dayTasks = tasksRef.current.filter(t =>
+      isValidDate(t.scheduledAt) && isSameDay(new Date(t.scheduledAt), date)
+    );
+
+    // Sort by start time
+    dayTasks.sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+
+    let currentTime = startTime;
+
+    for (const task of dayTasks) {
+      const taskStart = new Date(task.scheduledAt);
+      const taskEnd = new Date(taskStart.getTime() + (task.duration || 60) * 60000);
+
+      if (currentTime < taskStart) {
+        // There's a gap before this task
+        const gapDuration = (taskStart - currentTime) / 60000; // in minutes
+        if (gapDuration >= duration) {
+          return currentTime;
+        }
+      }
+      // Move to after this task
+      currentTime = taskEnd;
+    }
+
+    // No conflicts, use currentTime, but ensure it's at least 5 minutes from now for today
+    if (isSameDay(date, now)) {
+      return new Date(Math.max(currentTime.getTime(), now.getTime() + 5 * 60 * 1000));
+    }
+    return currentTime;
+  };
+
+  const updateTaskSchedule = (taskId, date, duration = 60, hasTime = true) => {
+    let finalDate = date;
+    if (!hasTime && date) {
+      // Find next available slot
+      finalDate = findNextAvailableSlot(date, duration);
+    }
+
     const newTasks = tasksRef.current.map((t) => {
       if (t.id === taskId) {
         return {
           ...t,
-          scheduledAt: date ? date.toISOString() : null,
+          scheduledAt: finalDate ? finalDate.toISOString() : null,
           duration,
-          isEvent: !!date,
+          isEvent: !!finalDate,
         };
       }
       return t;
@@ -229,16 +281,22 @@ export const AppProvider = ({ children }) => {
     updateTasks(newTasks);
   };
 
-  const duplicateTask = (originalTaskId, newDate, duration = 60) => {
+  const duplicateTask = (originalTaskId, newDate, duration = 60, hasTime = true) => {
     const originalTask = tasksRef.current.find((t) => t.id === originalTaskId);
     if (!originalTask) return;
+
+    let finalDate = newDate;
+    if (!hasTime && newDate) {
+      // Find next available slot
+      finalDate = findNextAvailableSlot(newDate, duration);
+    }
 
     const newTask = {
       ...originalTask,
       id: Date.now().toString(),
-      scheduledAt: newDate ? newDate.toISOString() : null,
+      scheduledAt: finalDate ? finalDate.toISOString() : null,
       duration: duration || originalTask.duration || 60,
-      isEvent: !!newDate,
+      isEvent: !!finalDate,
       completed: false,
     };
 

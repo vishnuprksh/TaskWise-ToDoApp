@@ -6,37 +6,37 @@ import { X, Calendar as CalendarIcon, Clock, Copy, Trash2 } from 'lucide-react-n
 import { format } from 'date-fns';
 import { isValidDate } from '../utils/time';
 
-export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, onDuplicate, task, initialDate }) {
+export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, onDuplicate, task, initialDate, defaultTime }) {
     const [selectedDate, setSelectedDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-    const [hasTime, setHasTime] = useState(false);
     const [showTimePicker, setShowTimePicker] = useState(false);
     const [selectedTime, setSelectedTime] = useState(new Date());
     const [duration, setDuration] = useState(60);
 
     useEffect(() => {
-        if (visible && isValidDate(initialDate)) {
-            const dateObj = new Date(initialDate);
-            setSelectedDate(format(dateObj, 'yyyy-MM-dd'));
-            setSelectedTime(dateObj);
-            setDuration(task?.duration || 60);
-            setHasTime(true);
-        } else if (visible) {
-            // Reset to defaults for new schedule 
-            setSelectedDate(format(new Date(), 'yyyy-MM-dd'));
-            setHasTime(false);
-            setSelectedTime(new Date());
-            setDuration(60);
+        if (visible) {
+            if (isValidDate(initialDate)) {
+                const dateObj = new Date(initialDate);
+                setSelectedDate(format(dateObj, 'yyyy-MM-dd'));
+                setSelectedTime(dateObj);
+                setDuration(task?.duration || 60);
+            } else if (defaultTime) {
+                const dateObj = new Date(defaultTime);
+                setSelectedDate(format(dateObj, 'yyyy-MM-dd'));
+                setSelectedTime(dateObj);
+                setDuration(60);
+            } else {
+                const now = new Date();
+                setSelectedDate(format(now, 'yyyy-MM-dd'));
+                setSelectedTime(now);
+                setDuration(60);
+            }
         }
-    }, [visible, initialDate, task]);
+    }, [visible, initialDate, defaultTime, task]);
 
     const getFinalDate = () => {
         let finalDate = new Date(selectedDate);
-        if (hasTime) {
-            finalDate.setHours(selectedTime.getHours());
-            finalDate.setMinutes(selectedTime.getMinutes());
-        } else {
-            finalDate.setHours(9, 0, 0, 0);
-        }
+        finalDate.setHours(selectedTime.getHours());
+        finalDate.setMinutes(selectedTime.getMinutes());
         return finalDate;
     };
 
@@ -50,13 +50,6 @@ export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, 
         onClose();
     };
 
-    const toggleTime = (value) => {
-        setHasTime(value);
-        if (value && Platform.OS === 'android') {
-            setShowTimePicker(true);
-        }
-    };
-
     const handleTimeChange = (event, date) => {
         if (Platform.OS === 'android') {
             setShowTimePicker(false);
@@ -64,10 +57,6 @@ export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, 
 
         if (date) {
             setSelectedTime(date);
-        } else {
-            // If cancelled on Android, maybe we want to keep hasTime true but just not update time?
-            // Or if they cancelled the "initial" pick, maybe set hasTime false?
-            // Let's keep it simple: just hide picker. User can toggle off if they want.
         }
     };
 
@@ -93,6 +82,7 @@ export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, 
                     <View style={styles.calendarContainer}>
                         <Calendar
                             current={selectedDate}
+                            minDate={new Date().toISOString().split('T')[0]}
                             onDayPress={day => setSelectedDate(day.dateString)}
                             markedDates={{
                                 [selectedDate]: { selected: true, selectedColor: '#6366f1' }
@@ -116,64 +106,52 @@ export default function ScheduleModal({ visible, onClose, onSchedule, onDelete, 
                     </View>
 
                     <View style={styles.timeSection}>
-                        <View style={styles.timeToggle}>
-                            <View style={styles.row}>
-                                <Clock size={20} color="#94a3b8" />
-                                <Text style={styles.label}>Set Time</Text>
-                            </View>
-                            <Switch
-                                value={hasTime}
-                                onValueChange={toggleTime}
-                                trackColor={{ false: '#334155', true: '#6366f1' }}
-                                thumbColor={'#fff'}
-                            />
+                        <View style={styles.row}>
+                            <Clock size={20} color="#94a3b8" />
+                            <Text style={styles.label}>Time</Text>
                         </View>
 
-                        {hasTime && (
-                            <View>
-                                {Platform.OS === 'android' && (
-                                    <TouchableOpacity
-                                        style={styles.timeDisplayButton}
-                                        onPress={() => setShowTimePicker(true)}
-                                    >
-                                        <Text style={styles.timeDisplayText}>
-                                            {format(selectedTime, 'h:mm a')}
-                                        </Text>
-                                    </TouchableOpacity>
-                                )}
+                        {Platform.OS === 'android' && (
+                            <TouchableOpacity
+                                style={styles.timeDisplayButton}
+                                onPress={() => setShowTimePicker(true)}
+                            >
+                                <Text style={styles.timeDisplayText}>
+                                    {format(selectedTime, 'h:mm a')}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
 
-                                {(Platform.OS === 'ios' || showTimePicker) && (
-                                    <View style={styles.timePickerContainer}>
-                                        <DateTimePicker
-                                            value={selectedTime}
-                                            mode="time"
-                                            is24Hour={false}
-                                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                                            onChange={handleTimeChange}
-                                            textColor="#fff"
-                                            themeVariant="dark"
-                                        />
-                                    </View>
-                                )}
-
-                                <View style={styles.durationSection}>
-                                    <Text style={styles.durationLabel}>Duration:</Text>
-                                    <View style={styles.durationButtons}>
-                                        {[15, 30, 45, 60, 90, 120].map((d) => (
-                                            <TouchableOpacity
-                                                key={d}
-                                                style={[styles.durationButton, duration === d && styles.durationButtonActive]}
-                                                onPress={() => setDuration(d)}
-                                            >
-                                                <Text style={[styles.durationButtonText, duration === d && styles.durationButtonTextActive]}>
-                                                    {d < 60 ? `${d}m` : `${d / 60}h`}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                </View>
+                        {(Platform.OS === 'ios' || showTimePicker) && (
+                            <View style={styles.timePickerContainer}>
+                                <DateTimePicker
+                                    value={selectedTime}
+                                    mode="time"
+                                    is24Hour={false}
+                                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                                    onChange={handleTimeChange}
+                                    textColor="#fff"
+                                    themeVariant="dark"
+                                />
                             </View>
                         )}
+
+                        <View style={styles.durationSection}>
+                            <Text style={styles.durationLabel}>Duration:</Text>
+                            <View style={styles.durationButtons}>
+                                {[15, 30, 45, 60, 90, 120].map((d) => (
+                                    <TouchableOpacity
+                                        key={d}
+                                        style={[styles.durationButton, duration === d && styles.durationButtonActive]}
+                                        onPress={() => setDuration(d)}
+                                    >
+                                        <Text style={[styles.durationButtonText, duration === d && styles.durationButtonTextActive]}>
+                                            {d < 60 ? `${d}m` : `${d / 60}h`}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </View>
                     </View>
 
                     <View style={styles.footer}>

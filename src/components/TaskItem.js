@@ -9,10 +9,12 @@ import {
     Flag,
     CalendarRange,
 } from 'lucide-react-native';
-import { formatTime, safeFormat, isValidDate } from '../utils/time';
+import { formatTime, safeFormat, isValidDate, isSameDay } from '../utils/time';
 
 const TaskItem = ({ item, project, onOpenModal, onToggle, onNavigateTimer, onDelete, onSchedule, fadeAnim }) => {
     const swipeableRef = useRef(null);
+
+    const isUpcoming = isValidDate(item.scheduledAt) && new Date(item.scheduledAt) > new Date();
 
     const renderRightActions = (progress, dragX) => {
         return (
@@ -52,7 +54,7 @@ const TaskItem = ({ item, project, onOpenModal, onToggle, onNavigateTimer, onDel
                 }
             }}
         >
-            <Animated.View style={[styles.taskContainer, { opacity: fadeAnim }]}>
+            <Animated.View style={[styles.taskContainer, { opacity: fadeAnim }, isUpcoming && styles.upcomingTaskContainer]}>
                 <View style={styles.taskMain}>
                     <TouchableOpacity
                         style={styles.taskTextContainer}
@@ -91,6 +93,16 @@ const TaskItem = ({ item, project, onOpenModal, onToggle, onNavigateTimer, onDel
                                     <View style={styles.timeSpentTag}>
                                         <Clock size={12} color="#94a3b8" />
                                         <Text style={styles.timeSpentText}>{formatTime(item.timeSpent)}</Text>
+                                    </View>
+                                )}
+                                {isValidDate(item.scheduledAt) && (
+                                    <View style={[styles.scheduledTag, isUpcoming ? styles.upcomingTag : styles.pastTag]}>
+                                        <CalendarRange size={12} color={isUpcoming ? '#f43f5e' : '#64748b'} />
+                                        <Text style={[styles.scheduledTagText, { color: isUpcoming ? '#f43f5e' : '#64748b' }]}>
+                                            {isSameDay(new Date(item.scheduledAt), new Date())
+                                                ? `Today at ${safeFormat(item.scheduledAt, 'h:mm a')}`
+                                                : safeFormat(item.scheduledAt, 'MMM d, h:mm a')}
+                                        </Text>
                                     </View>
                                 )}
                             </View>
@@ -169,6 +181,11 @@ const styles = StyleSheet.create({
         marginBottom: 12,
         borderWidth: 1,
         borderColor: '#334155',
+    },
+    upcomingTaskContainer: {
+        borderLeftWidth: 4,
+        borderLeftColor: '#f43f5e',
+        backgroundColor: '#1f1e2e',
     },
     taskMain: {
         flexDirection: 'row',
@@ -280,6 +297,24 @@ const styles = StyleSheet.create({
     progressBarFill: {
         height: '100%',
         backgroundColor: '#6366f1',
+    },
+    scheduledTag: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+        gap: 4,
+    },
+    upcomingTag: {
+        backgroundColor: 'rgba(244,63,94,0.12)',
+    },
+    pastTag: {
+        backgroundColor: '#33415540',
+    },
+    scheduledTagText: {
+        fontSize: 12,
+        fontWeight: '600',
     },
 });
 

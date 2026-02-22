@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import { Plus, ChevronDown, ChevronRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { isValidDate } from '../utils/time';
+import { isValidDate, roundToNearest15Minutes } from '../utils/time';
 import TaskItem from '../components/TaskItem';
 import TaskForm from '../components/TaskForm';
 import ScheduleModal from '../components/ScheduleModal';
 
 export default function HomePage({ onNavigateTimer }) {
-  const { tasks, projects, updateTasks, calculatePriorityScore, updateTaskSchedule } = useApp();
+  const { tasks, projects, updateTasks, calculatePriorityScore, updateTaskSchedule, findNextAvailableSlot } = useApp();
 
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [taskToSchedule, setTaskToSchedule] = useState(null);
+  const [defaultTime, setDefaultTime] = useState(null);
   const [selectedFilterProject, setSelectedFilterProject] = useState(null);
   const [isFinishedExpanded, setIsFinishedExpanded] = useState(false);
 
@@ -47,7 +48,6 @@ export default function HomePage({ onNavigateTimer }) {
     } else {
       newTasks = [...tasks, newTask];
     }
-    newTasks.sort((a, b) => b.priorityScore - a.priorityScore);
     updateTasks(newTasks);
     closeTaskModal();
   };
@@ -86,11 +86,20 @@ export default function HomePage({ onNavigateTimer }) {
 
   const handleSchedule = (task) => {
     setTaskToSchedule(task);
+    if (!task.scheduledAt) {
+      // New schedule, compute default time
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const nextSlot = findNextAvailableSlot(today, task.duration || 60);
+      setDefaultTime(roundToNearest15Minutes(nextSlot));
+    } else {
+      setDefaultTime(null);
+    }
     setIsScheduleModalOpen(true);
   };
 
   const handleScheduleTask = (taskId, date, duration) => {
-    updateTaskSchedule(taskId, date, duration);
+    updateTaskSchedule(taskId, date, duration, true);
     setIsScheduleModalOpen(false);
     setTaskToSchedule(null);
   };
@@ -204,6 +213,7 @@ export default function HomePage({ onNavigateTimer }) {
         onSchedule={handleScheduleTask}
         task={taskToSchedule}
         initialDate={taskToSchedule?.scheduledAt}
+        defaultTime={defaultTime}
       />
     </>
   );

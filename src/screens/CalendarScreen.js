@@ -155,19 +155,57 @@ export default function CalendarScreen({ navigation }) {
 
     const getProject = (id) => projects.find(p => p.id === id);
 
+    const findNextAvailableSlot = (date, duration) => {
+        const dayStart = new Date(date);
+        dayStart.setHours(9, 0, 0, 0); // Default start at 9 AM for future days
+        const now = new Date();
+        const startTime = isSameDay(date, now) ? now : dayStart; // For today, start from current time; for future days, from 9 AM
+
+        // Get all tasks on this day
+        const dayTasks = tasks.filter(t =>
+            isValidDate(t.scheduledAt) && isSameDay(new Date(t.scheduledAt), date)
+        );
+
+        // Sort by start time
+        dayTasks.sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+
+        let currentTime = startTime;
+
+        for (const task of dayTasks) {
+            const taskStart = new Date(task.scheduledAt);
+            const taskEnd = new Date(taskStart.getTime() + (task.duration || 60) * 60000);
+
+            if (currentTime < taskStart) {
+                // There's a gap before this task
+                const gapDuration = (taskStart - currentTime) / 60000; // in minutes
+                if (gapDuration >= duration) {
+                    return currentTime;
+                }
+            }
+            // Move to after this task
+            currentTime = taskEnd;
+        }
+
+        // No conflicts, use currentTime, but ensure it's at least 5 minutes from now for today
+        if (isSameDay(date, now)) {
+            return new Date(Math.max(currentTime.getTime(), now.getTime() + 5 * 60 * 1000));
+        }
+        return currentTime;
+    };
+
     const handleEventPress = (task) => {
         setTaskToEdit(task);
         setIsScheduleModalVisible(true);
     };
 
     const handleScheduleUpdate = (taskId, date, duration) => {
-        updateTaskSchedule(taskId, date, duration);
+        updateTaskSchedule(taskId, date, duration, true);
         setIsScheduleModalVisible(false);
         setTaskToEdit(null);
     };
 
     const handleDuplicateEvent = (taskId, date, duration) => {
-        duplicateTask(taskId, date, duration);
+        duplicateTask(taskId, date, duration, true);
         setIsScheduleModalVisible(false);
         setTaskToEdit(null);
     };

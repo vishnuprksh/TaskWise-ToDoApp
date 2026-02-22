@@ -28,7 +28,8 @@ import {
 } from 'lucide-react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useApp } from '../context/AppContext';
-import { isValidDate } from '../utils/time';
+import { isValidDate, roundToNearest15Minutes } from '../utils/time';
+import { isSameDay } from 'date-fns';
 import TaskItem from '../components/TaskItem';
 
 import TaskForm from '../components/TaskForm';
@@ -42,6 +43,7 @@ export default function HomeScreen({ navigation }) {
     const [isScheduleModalVisible, setIsScheduleModalVisible] = useState(false);
     const [isUserMenuVisible, setIsUserMenuVisible] = useState(false);
     const [taskToSchedule, setTaskToSchedule] = useState(null);
+    const [defaultTime, setDefaultTime] = useState(null);
     const [projectSearchText, setProjectSearchText] = useState('');
     const [selectedFilterProject, setSelectedFilterProject] = useState(null); // null means 'All'
     const [isFinishedExpanded, setIsFinishedExpanded] = useState(false);
@@ -115,9 +117,6 @@ export default function HomeScreen({ navigation }) {
             newTasks = [...tasks, newTask];
         }
 
-        // Sort by priority score (descending)
-        newTasks.sort((a, b) => b.priorityScore - a.priorityScore);
-
         updateTasks(newTasks);
         closeTaskModal();
     };
@@ -168,14 +167,43 @@ export default function HomeScreen({ navigation }) {
     };
 
     const handleOpenSchedule = (task) => {
+        // Compute next available slot for today
+        const today = new Date();
+        const dayStart = new Date(today);
+        dayStart.setHours(9, 0, 0, 0);
+        const now = new Date();
+        const startTime = isSameDay(today, now) ? now : dayStart;
+
+        const dayTasks = tasks.filter(t =>
+            isValidDate(t.scheduledAt) && isSameDay(new Date(t.scheduledAt), today)
+        );
+        dayTasks.sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+
+        let currentTime = startTime;
+        for (const t of dayTasks) {
+            const taskStart = new Date(t.scheduledAt);
+            const taskEnd = new Date(taskStart.getTime() + (t.duration || 60) * 60000);
+            if (currentTime < taskStart) {
+                const gap = (taskStart - currentTime) / 60000;
+                if (gap >= 60) { // assume 60 min default
+                    break;
+                }
+            }
+            currentTime = taskEnd;
+        }
+        // Ensure at least 5 min from now
+        const finalTime = new Date(Math.max(currentTime.getTime(), now.getTime() + 5 * 60 * 1000));
+
+        setDefaultTime(roundToNearest15Minutes(finalTime));
         setTaskToSchedule(task);
         setIsScheduleModalVisible(true);
     };
 
     const handleScheduleTask = (taskId, date, duration) => {
-        updateTaskSchedule(taskId, date, duration);
+        updateTaskSchedule(taskId, date, duration, true);
         setIsScheduleModalVisible(false);
         setTaskToSchedule(null);
+        setDefaultTime(null);
     };
 
     const getProject = (id) => projects.find((p) => p.id === id);
@@ -354,6 +382,7 @@ export default function HomeScreen({ navigation }) {
                     onClose={() => setIsScheduleModalVisible(false)}
                     onSchedule={handleScheduleTask}
                     task={taskToSchedule}
+                    defaultTime={defaultTime}
                 />
                 <UserMenu
                     visible={isUserMenuVisible}

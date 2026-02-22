@@ -1,5 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { format } from 'date-fns';
 
 // Configure notification handler
 Notifications.setNotificationHandler({
@@ -14,11 +15,25 @@ export const registerForPushNotificationsAsync = async () => {
     let token;
 
     if (Platform.OS === 'android') {
+        // Default channel
         await Notifications.setNotificationChannelAsync('default', {
-            name: 'default',
-            importance: Notifications.AndroidImportance.MAX,
+            name: 'General',
+            importance: Notifications.AndroidImportance.DEFAULT,
             vibrationPattern: [0, 250, 250, 250],
-            lightColor: '#FF231F7C',
+            lightColor: '#6366f1',
+        });
+
+        // Dedicated channel for 5-min event reminders
+        await Notifications.setNotificationChannelAsync('event-reminders', {
+            name: 'Event Reminders',
+            description: 'Notifications 5 minutes before a scheduled event starts.',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 300, 150, 300],
+            lightColor: '#f43f5e',
+            sound: 'default',
+            enableLights: true,
+            enableVibrate: true,
+            showBadge: true,
         });
     }
 
@@ -31,29 +46,65 @@ export const registerForPushNotificationsAsync = async () => {
     }
 
     if (finalStatus !== 'granted') {
-        // alert('Failed to get push token for push notification!');
         console.log('Permission not granted for notifications');
         return;
     }
 
-    // token = (await Notifications.getExpoPushTokenAsync()).data;
-    // console.log(token);
     return token;
 };
 
+/**
+ * Schedule a notification 5 minutes before an event.
+ * @param {string} taskText  - The task/event title
+ * @param {Date}   eventDate - The actual start time of the event
+ * @returns {string|null} notification identifier
+ */
+export const scheduleEventReminderNotification = async (taskText, eventDate) => {
+    try {
+        const triggerDate = new Date(eventDate.getTime() - 5 * 60 * 1000);
+        if (triggerDate <= new Date()) return null; // already in the past
+
+        const timeStr = format(eventDate, 'h:mm a');
+
+        const id = await Notifications.scheduleNotificationAsync({
+            content: {
+                title: '⏰ Starting soon',
+                body: `"${taskText}" starts at ${timeStr} — in 5 minutes.`,
+                sound: true,
+                priority: Notifications.AndroidNotificationPriority.MAX,
+                ...(Platform.OS === 'android' && { channelId: 'event-reminders' }),
+                data: { taskText, eventDate: eventDate.toISOString() },
+            },
+            trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.DATE,
+                date: triggerDate,
+            },
+        });
+        return id;
+    } catch (error) {
+        console.error('Error scheduling event reminder notification:', error);
+        return null;
+    }
+};
+
+// Legacy helper kept for backward compatibility
 export const scheduleEventNotification = async (title, body, triggerDate) => {
     try {
         const id = await Notifications.scheduleNotificationAsync({
             content: {
-                title: title,
-                body: body,
+                title,
+                body,
                 sound: true,
+                ...(Platform.OS === 'android' && { channelId: 'event-reminders' }),
             },
-            trigger: triggerDate,
+            trigger: {
+                type: Notifications.SchedulableTriggerInputTypes.DATE,
+                date: triggerDate,
+            },
         });
         return id;
     } catch (error) {
-        console.error("Error scheduling notification:", error);
+        console.error('Error scheduling notification:', error);
         return null;
     }
 };
@@ -63,6 +114,7 @@ export const cancelNotification = async (notificationId) => {
     try {
         await Notifications.cancelScheduledNotificationAsync(notificationId);
     } catch (error) {
-        console.error("Error cancelling notification:", error);
+        console.error('Error cancelling notification:', error);
     }
 };
+

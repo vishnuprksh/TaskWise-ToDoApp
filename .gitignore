@@ -51,3 +51,5 @@ android/app/google-services.json
 # Temporary scripts
 extractCert.js
 extract_jks_manual.py
+
+.firebase/

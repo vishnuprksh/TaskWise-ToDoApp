@@ -1,4 +1,4 @@
-import { format, isValid } from 'date-fns';
+import { format, isValid, isSameDay } from 'date-fns';
 
 export const formatTime = (seconds) => {
     const hrs = Math.floor(seconds / 3600);
@@ -18,5 +18,15 @@ export const safeFormat = (date, formatStr, fallback = '') => {
     const d = new Date(date);
     if (!isValid(d)) return fallback;
     return format(d, formatStr);
+};
+
+export { isSameDay };
+
+export const roundToNearest15Minutes = (date) => {
+    const d = new Date(date);
+    const minutes = d.getMinutes();
+    const roundedMinutes = Math.round(minutes / 15) * 15;
+    d.setMinutes(roundedMinutes, 0, 0); // Set seconds and milliseconds to 0
+    return d;
 };
 

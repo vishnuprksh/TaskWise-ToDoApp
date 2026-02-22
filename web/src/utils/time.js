@@ -24,3 +24,11 @@ export const safeFormat = (date, formatStr, fallback = '') => {
   if (!isValid(d)) return fallback;
   return format(d, formatStr);
 };
+
+export const roundToNearest15Minutes = (date) => {
+  const d = new Date(date);
+  const minutes = d.getMinutes();
+  const roundedMinutes = Math.round(minutes / 15) * 15;
+  d.setMinutes(roundedMinutes, 0, 0); // Set seconds and milliseconds to 0
+  return d;
+};

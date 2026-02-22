@@ -4,7 +4,8 @@ import * as AuthService from '../services/AuthService';
 import * as SyncService from '../services/SyncService';
 import * as NotificationService from '../services/NotificationService';
 import { calculatePriorityScore } from '../utils/priority';
-import { addMinutes, subMinutes, parseISO } from 'date-fns';
+import { isValidDate } from '../utils/time';
+import { subMinutes, parseISO, isSameDay } from 'date-fns';
 
 const AppContext = createContext();
 
@@ -48,8 +49,9 @@ export const AppProvider = ({ children }) => {
             const { tasks: syncedTasks, projects: syncedProjects } = await SyncService.syncData(tasks, projects);
 
             // Update local state and storage with synced data
-            setTasks(syncedTasks);
-            saveTasks(syncedTasks);
+            const sortedSyncedTasks = [...syncedTasks].sort((a, b) => b.priorityScore - a.priorityScore);
+            setTasks(sortedSyncedTasks);
+            saveTasks(sortedSyncedTasks);
             setProjects(syncedProjects);
             saveProjects(syncedProjects);
         } catch (error) {
@@ -131,6 +133,8 @@ export const AppProvider = ({ children }) => {
                     }
                     return task;
                 });
+                // Sort tasks by priority score (descending)
+                parsedTasks.sort((a, b) => b.priorityScore - a.priorityScore);
                 setTasks(parsedTasks);
             }
 
@@ -165,10 +169,13 @@ export const AppProvider = ({ children }) => {
     };
 
     const updateTasks = (newTasks) => {
+        // Sort tasks by priority score (descending) before saving
+        const sortedTasks = [...newTasks].sort((a, b) => b.priorityScore - a.priorityScore);
+
         // Diffing logic to sync changes to cloud
         if (user) {
             // Check for added/updated tasks
-            newTasks.forEach(newTask => {
+            sortedTasks.forEach(newTask => {
                 const oldTask = tasks.find(t => t.id === newTask.id);
                 if (!oldTask || JSON.stringify(oldTask) !== JSON.stringify(newTask)) {
                     SyncService.saveTaskToCloud(newTask);
@@ -177,14 +184,14 @@ export const AppProvider = ({ children }) => {
 
             // Check for deleted tasks
             tasks.forEach(oldTask => {
-                if (!newTasks.find(t => t.id === oldTask.id)) {
+                if (!sortedTasks.find(t => t.id === oldTask.id)) {
                     SyncService.deleteTaskFromCloud(oldTask.id);
                 }
             });
         }
 
-        setTasks(newTasks);
-        saveTasks(newTasks);
+        setTasks(sortedTasks);
+        saveTasks(sortedTasks);
     };
 
     const updateProjects = (newProjects) => {
@@ -219,9 +226,53 @@ export const AppProvider = ({ children }) => {
         updateTasks(newTasks);
     };
 
-    const updateTaskSchedule = async (taskId, date, duration = 60) => {
+    const findNextAvailableSlot = (date, duration) => {
+        const dayStart = new Date(date);
+        dayStart.setHours(9, 0, 0, 0); // Default start at 9 AM for future days
+        const now = new Date();
+        const startTime = isSameDay(date, now) ? now : dayStart; // For today, start from current time; for future days, from 9 AM
+
+        // Get all tasks on this day
+        const dayTasks = tasks.filter(t =>
+            isValidDate(t.scheduledAt) && isSameDay(new Date(t.scheduledAt), date)
+        );
+
+        // Sort by start time
+        dayTasks.sort((a, b) => new Date(a.scheduledAt) - new Date(b.scheduledAt));
+
+        let currentTime = startTime;
+
+        for (const task of dayTasks) {
+            const taskStart = new Date(task.scheduledAt);
+            const taskEnd = new Date(taskStart.getTime() + (task.duration || 60) * 60000);
+
+            if (currentTime < taskStart) {
+                // There's a gap before this task
+                const gapDuration = (taskStart - currentTime) / 60000; // in minutes
+                if (gapDuration >= duration) {
+                    return currentTime;
+                }
+            }
+            // Move to after this task
+            currentTime = taskEnd;
+        }
+
+        // No conflicts, use currentTime, but ensure it's at least 5 minutes from now for today
+        if (isSameDay(date, now)) {
+            return new Date(Math.max(currentTime.getTime(), now.getTime() + 5 * 60 * 1000));
+        }
+        return currentTime;
+    };
+
+    const updateTaskSchedule = async (taskId, date, duration = 60, hasTime = true) => {
         const task = tasks.find(t => t.id === taskId);
         if (!task) return;
+
+        let finalDate = date;
+        if (!hasTime && date) {
+            // Find next available slot
+            finalDate = findNextAvailableSlot(date, duration);
+        }
 
         // Cancel existing notification if any
         if (task.notificationId) {
@@ -230,26 +281,21 @@ export const AppProvider = ({ children }) => {
 
         // Schedule new notification 5 minutes before
         let notificationId = null;
-        if (date) {
-            const triggerDate = subMinutes(new Date(date), 5);
-            // Only schedule if trigger date is in future
-            if (triggerDate > new Date()) {
-                notificationId = await NotificationService.scheduleEventNotification(
-                    "Upcoming Task",
-                    `"${task.text}" starts in 5 minutes.`,
-                    triggerDate
-                );
-            }
+        if (finalDate) {
+            notificationId = await NotificationService.scheduleEventReminderNotification(
+                task.text,
+                new Date(finalDate)
+            );
         }
 
         const newTasks = tasks.map(t => {
             if (t.id === taskId) {
                 return {
                     ...t,
-                    scheduledAt: date ? date.toISOString() : null,
+                    scheduledAt: finalDate ? finalDate.toISOString() : null,
                     duration,
                     notificationId,
-                    isEvent: !!date
+                    isEvent: !!finalDate
                 };
             }
             return t;
@@ -280,30 +326,32 @@ export const AppProvider = ({ children }) => {
         updateTasks(newTasks);
     };
 
-    const duplicateTask = async (originalTaskId, newDate, duration = 60) => {
+    const duplicateTask = async (originalTaskId, newDate, duration = 60, hasTime = true) => {
         const originalTask = tasks.find(t => t.id === originalTaskId);
         if (!originalTask) return;
 
+        let finalDate = newDate;
+        if (!hasTime && newDate) {
+            // Find next available slot
+            finalDate = findNextAvailableSlot(newDate, duration);
+        }
+
         // Schedule notification for the new task
         let notificationId = null;
-        if (newDate) {
-            const triggerDate = subMinutes(new Date(newDate), 5);
-            if (triggerDate > new Date()) {
-                notificationId = await NotificationService.scheduleEventNotification(
-                    "Upcoming Task",
-                    `"${originalTask.text}" starts in 5 minutes.`,
-                    triggerDate
-                );
-            }
+        if (finalDate) {
+            notificationId = await NotificationService.scheduleEventReminderNotification(
+                originalTask.text,
+                new Date(finalDate)
+            );
         }
 
         const newTask = {
             ...originalTask,
             id: Date.now().toString(),
-            scheduledAt: newDate ? newDate.toISOString() : null,
+            scheduledAt: finalDate ? finalDate.toISOString() : null,
             duration: duration || originalTask.duration || 60,
             notificationId,
-            isEvent: !!newDate,
+            isEvent: !!finalDate,
             // Reset completion if desired, or keep as is? Usually duplicate implies a new todo
             completed: false,
         };

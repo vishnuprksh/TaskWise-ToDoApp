@@ -13,11 +13,18 @@ export default function CalendarPage() {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState(null);
   const scrollRef = useRef(null);
+  const dragOccurredRef = useRef(false);
 
   // Drag-to-resize state
   const [resizingTask, setResizingTask] = useState(null);
   const [resizeStartY, setResizeStartY] = useState(0);
   const [resizeStartDuration, setResizeStartDuration] = useState(60);
+
+  // Drag-to-move state
+  const [draggingTask, setDraggingTask] = useState(null);
+  const [dragStartY, setDragStartY] = useState(0);
+  const [dragStartMinutes, setDragStartMinutes] = useState(0);
+  const [dragStartDateISO, setDragStartDateISO] = useState(null);
 
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 6 });
   const weekEnd = endOfWeek(selectedDate, { weekStartsOn: 6 });
@@ -50,6 +57,53 @@ export default function CalendarPage() {
     };
   }, [resizingTask, resizeStartY, resizeStartDuration]);
 
+  // Handle global mouse move/up for dragging (move events between times and days)
+  useEffect(() => {
+    if (!draggingTask) return;
+
+    const handleMouseMove = (e) => {
+      const deltaY = e.clientY - dragStartY;
+      const snapMinutes = 15;
+      const deltaMinutes = Math.round(deltaY / (HOUR_HEIGHT / 60) / snapMinutes) * snapMinutes;
+
+      let newTotalMinutes = dragStartMinutes + deltaMinutes;
+      newTotalMinutes = Math.max(0, Math.min(23 * 60 + 45, newTotalMinutes));
+
+      const newDate = new Date(dragStartDateISO);
+      newDate.setHours(Math.floor(newTotalMinutes / 60));
+      newDate.setMinutes(newTotalMinutes % 60);
+      newDate.setSeconds(0);
+
+      // Detect target calendar column via data-date attribute
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const colEl = el?.closest('[data-date]');
+      if (colEl) {
+        const dateStr = colEl.getAttribute('data-date');
+        const colDate = new Date(dateStr + 'T00:00:00');
+        newDate.setFullYear(colDate.getFullYear());
+        newDate.setMonth(colDate.getMonth());
+        newDate.setDate(colDate.getDate());
+      }
+
+      dragOccurredRef.current = true;
+      setDraggingTask(prev => ({ ...prev, scheduledAt: newDate.toISOString() }));
+    };
+
+    const handleMouseUp = () => {
+      if (draggingTask) {
+        updateTaskSchedule(draggingTask.id, new Date(draggingTask.scheduledAt), draggingTask.duration);
+      }
+      setDraggingTask(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [draggingTask, dragStartY, dragStartMinutes, dragStartDateISO]);
+
   useEffect(() => {
     // Scroll to 6 AM on load
     if (scrollRef.current) {
@@ -59,7 +113,10 @@ export default function CalendarPage() {
 
   const getDayTasks = (date) => {
     return tasks.filter(
-      (t) => isValidDate(t.scheduledAt) && isSameDay(new Date(t.scheduledAt), date)
+      (t) =>
+        isValidDate(t.scheduledAt) &&
+        isSameDay(new Date(t.scheduledAt), date) &&
+        !(draggingTask && draggingTask.id === t.id) // hide original while dragging
     );
   };
 
@@ -68,6 +125,18 @@ export default function CalendarPage() {
     setResizingTask(task);
     setResizeStartY(e.clientY);
     setResizeStartDuration(task.duration || 60);
+  };
+
+  const startDrag = (e, task) => {
+    if (e.button !== 0) return; // left button only
+    e.preventDefault();
+    e.stopPropagation();
+    dragOccurredRef.current = false;
+    const d = new Date(task.scheduledAt);
+    setDraggingTask({ ...task });
+    setDragStartY(e.clientY);
+    setDragStartMinutes(d.getHours() * 60 + d.getMinutes());
+    setDragStartDateISO(task.scheduledAt);
   };
 
   const handleUpdateTask = (taskId, updates) => {
@@ -92,13 +161,13 @@ export default function CalendarPage() {
   };
 
   const handleScheduleUpdate = (taskId, date, duration) => {
-    updateTaskSchedule(taskId, date, duration);
+    updateTaskSchedule(taskId, date, duration, true);
     setIsScheduleModalOpen(false);
     setTaskToEdit(null);
   };
 
   const handleDuplicate = (taskId, date, duration) => {
-    duplicateTask(taskId, date, duration);
+    duplicateTask(taskId, date, duration, true);
     setIsScheduleModalOpen(false);
     setTaskToEdit(null);
   };
@@ -169,9 +238,19 @@ export default function CalendarPage() {
             {weekDays.map((date) => {
               const isToday = isSameDay(date, new Date());
               const dayTasks = getDayTasks(date);
+              const dateStr = format(date, 'yyyy-MM-dd');
+
+              // Show dragging live-preview in whatever column it's hovering over
+              const dragPreview = draggingTask && isSameDay(new Date(draggingTask.scheduledAt), date)
+                ? draggingTask : null;
 
               return (
-                <div key={date.toString()} className={`calendar-column ${isToday ? 'today' : ''}`}>
+                <div
+                  key={date.toString()}
+                  data-date={dateStr}
+                  className={`calendar-column ${isToday ? 'today' : ''}`}
+                  style={{ cursor: draggingTask ? 'grabbing' : 'default' }}
+                >
                   {isToday && (
                     <div className="current-time-line" style={{ top: nowMinutes * (HOUR_HEIGHT / 60) }} />
                   )}
@@ -193,13 +272,23 @@ export default function CalendarPage() {
                     return (
                       <div
                         key={task.id}
+                        data-date={dateStr}
                         className={`calendar-event ${isPast ? 'past' : ''} ${isResizing ? 'resizing' : ''}`}
                         style={{
                           top,
                           height,
                           backgroundColor: project ? project.color : '#6366f1',
+                          cursor: 'grab',
+                          userSelect: 'none',
                         }}
-                        onClick={() => !isResizing && handleEventPress(task)}
+                        onMouseDown={(e) => !isResizing && startDrag(e, task)}
+                        onClick={(e) => {
+                          if (!isResizing && !dragOccurredRef.current) {
+                            e.stopPropagation();
+                            handleEventPress(task);
+                          }
+                          dragOccurredRef.current = false;
+                        }}
                       >
                         <div className="calendar-event-text" title={displayTask.text}>{displayTask.text}</div>
                         <div className="calendar-event-time">
@@ -208,11 +297,43 @@ export default function CalendarPage() {
                         </div>
                         <div 
                           className="calendar-event-resize-handle" 
-                          onMouseDown={(e) => startResize(e, task)}
+                          onMouseDown={(e) => { e.stopPropagation(); startResize(e, task); }}
                         />
                       </div>
                     );
                   })}
+
+                  {/* Live drag preview in target column */}
+                  {dragPreview && (() => {
+                    const previewDate = new Date(dragPreview.scheduledAt);
+                    const previewMinutes = previewDate.getHours() * 60 + previewDate.getMinutes();
+                    const previewDuration = dragPreview.duration || 60;
+                    const previewTop = previewMinutes * (HOUR_HEIGHT / 60);
+                    const previewHeight = previewDuration * (HOUR_HEIGHT / 60);
+                    const previewProject = getProject(dragPreview.projectId);
+                    const previewEnd = new Date(previewDate.getTime() + previewDuration * 60000);
+                    return (
+                      <div
+                        className="calendar-event dragging"
+                        style={{
+                          top: previewTop,
+                          height: previewHeight,
+                          backgroundColor: previewProject ? previewProject.color : '#6366f1',
+                          pointerEvents: 'none',
+                          opacity: 0.85,
+                          boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                          transform: 'scale(1.02)',
+                          zIndex: 200,
+                        }}
+                      >
+                        <div className="calendar-event-text">{dragPreview.text}</div>
+                        <div className="calendar-event-time">
+                          {safeFormat(previewDate, 'h:mm a')} – {safeFormat(previewEnd, 'h:mm a')}
+                          {` (${previewDuration}m)`}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}
