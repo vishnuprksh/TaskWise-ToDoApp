@@ -12,6 +12,7 @@ import {
     KeyboardAvoidingView,
     Keyboard,
     Platform,
+    TextInput,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -25,6 +26,7 @@ import {
     Hand,
     X,
     User,
+    Search,
 } from 'lucide-react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useApp } from '../context/AppContext';
@@ -48,6 +50,8 @@ export default function HomeScreen({ navigation }) {
     const [selectedFilterProject, setSelectedFilterProject] = useState(null); // null means 'All'
     const [isFinishedExpanded, setIsFinishedExpanded] = useState(false);
     const [showTutorial, setShowTutorial] = useState(false);
+    const [isSearchingProject, setIsSearchingProject] = useState(false);
+    const [projectSearchQuery, setProjectSearchQuery] = useState('');
     const TUTORIAL_KEY = '@taskwise_tutorial_seen';
 
     // Task Form State
@@ -248,34 +252,68 @@ export default function HomeScreen({ navigation }) {
 
                 {/* Project Filter Bar */}
                 <View style={styles.filterBar}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+                    {!isSearchingProject ? (
                         <TouchableOpacity
-                            style={[
-                                styles.filterChip,
-                                !selectedFilterProject ? styles.filterChipSelected : { opacity: 0.6 }
-                            ]}
-                            onPress={() => setSelectedFilterProject(null)}
+                            onPress={() => setIsSearchingProject(true)}
+                            style={styles.searchToggleButton}
                         >
-                            <Text style={[styles.filterChipText, !selectedFilterProject && styles.filterChipTextSelected]}>All</Text>
+                            <Search size={20} color="#94a3b8" />
                         </TouchableOpacity>
-                        {projects.filter(p => !p.archived).map(p => {
-                            const isSelected = selectedFilterProject === p.id;
-                            return (
-                                <TouchableOpacity
-                                    key={p.id}
-                                    style={[
-                                        styles.filterChip,
-                                        isSelected
-                                            ? [styles.filterChipSelected, { borderColor: p.color }]
-                                            : { borderColor: '#334155', opacity: 0.6 }
-                                    ]}
-                                    onPress={() => setSelectedFilterProject(p.id)}
-                                >
-                                    <View style={[styles.projectDot, { backgroundColor: isSelected ? p.color : '#64748b' }]} />
-                                    <Text style={[styles.filterChipText, isSelected && styles.filterChipTextSelected]}>{p.name}</Text>
-                                </TouchableOpacity>
-                            );
-                        })}
+                    ) : (
+                        <View style={styles.searchContainer}>
+                            <Search size={16} color="#94a3b8" style={styles.searchIcon} />
+                            <TextInput
+                                style={styles.searchInput}
+                                placeholder="Search..."
+                                placeholderTextColor="#64748b"
+                                value={projectSearchQuery}
+                                onChangeText={setProjectSearchQuery}
+                                autoFocus
+                            />
+                            <TouchableOpacity
+                                onPress={() => {
+                                    setIsSearchingProject(false);
+                                    setProjectSearchQuery('');
+                                }}
+                                style={styles.closeSearchButton}
+                            >
+                                <X size={16} color="#94a3b8" />
+                            </TouchableOpacity>
+                        </View>
+                    )}
+
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll} style={{ flex: 1 }}>
+                        {!isSearchingProject && (
+                            <TouchableOpacity
+                                style={[
+                                    styles.filterChip,
+                                    !selectedFilterProject ? styles.filterChipSelected : { opacity: 0.6 }
+                                ]}
+                                onPress={() => setSelectedFilterProject(null)}
+                            >
+                                <Text style={[styles.filterChipText, !selectedFilterProject && styles.filterChipTextSelected]}>All</Text>
+                            </TouchableOpacity>
+                        )}
+                        {projects
+                            .filter(p => !p.archived && (projectSearchQuery === '' || p.name.toLowerCase().includes(projectSearchQuery.toLowerCase())))
+                            .map(p => {
+                                const isSelected = selectedFilterProject === p.id;
+                                return (
+                                    <TouchableOpacity
+                                        key={p.id}
+                                        style={[
+                                            styles.filterChip,
+                                            isSelected
+                                                ? [styles.filterChipSelected, { borderColor: p.color }]
+                                                : { borderColor: '#334155', opacity: 0.6 }
+                                        ]}
+                                        onPress={() => setSelectedFilterProject(p.id)}
+                                    >
+                                        <View style={[styles.projectDot, { backgroundColor: isSelected ? p.color : '#64748b' }]} />
+                                        <Text style={[styles.filterChipText, isSelected && styles.filterChipTextSelected]}>{p.name}</Text>
+                                    </TouchableOpacity>
+                                );
+                            })}
                     </ScrollView>
                 </View>
 
@@ -489,12 +527,46 @@ const styles = StyleSheet.create({
         elevation: 4,
     },
     filterBar: {
+        flexDirection: 'row',
+        alignItems: 'center',
         paddingHorizontal: 20,
         marginBottom: 10,
+        gap: 10,
     },
     filterScroll: {
         gap: 10,
-        paddingRight: 20,
+        paddingRight: 10,
+    },
+    searchContainer: {
+        width: 120,
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#1e293b',
+        borderRadius: 12,
+        paddingHorizontal: 8,
+        height: 36,
+        borderWidth: 1,
+        borderColor: '#334155',
+    },
+    searchIcon: {
+        marginRight: 4,
+    },
+    searchInput: {
+        flex: 1,
+        color: '#f8fafc',
+        fontSize: 12,
+        fontWeight: '500',
+        padding: 0,
+    },
+    closeSearchButton: {
+        padding: 2,
+    },
+    searchToggleButton: {
+        padding: 8,
+        backgroundColor: '#1e293b',
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#334155',
     },
     filterChip: {
         paddingHorizontal: 12,
