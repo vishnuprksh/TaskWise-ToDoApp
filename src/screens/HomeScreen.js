@@ -59,10 +59,10 @@ export default function HomeScreen({ navigation }) {
     const [taskText, setTaskText] = useState('');
     const [selectedProject, setSelectedProject] = useState(null);
     const [attributes, setAttributes] = useState({
-        easiness: 'medium',
-        importance: 'medium',
-        emergency: 'medium',
-        interest: 'medium',
+        easiness: 'high',
+        importance: 'high',
+        emergency: 'high',
+        interest: 'high',
     });
     const [startDate, setStartDate] = useState(null);
     const [endDate, setEndDate] = useState(null);
@@ -154,10 +154,10 @@ export default function HomeScreen({ navigation }) {
             setSelectedProject(defaultProjectId);
             setProjectSearchText('');
             setAttributes({
-                easiness: 'medium',
-                importance: 'medium',
-                emergency: 'medium',
-                interest: 'medium',
+                easiness: 'high',
+                importance: 'high',
+                emergency: 'high',
+                interest: 'high',
             });
             setStartDate(null);
             setEndDate(null);

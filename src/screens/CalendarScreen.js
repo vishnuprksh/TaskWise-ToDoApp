@@ -242,6 +242,17 @@ export default function CalendarScreen({ navigation }) {
         return lines;
     };
 
+    const scrollRef = useRef(null);
+
+    useEffect(() => {
+        if (scrollRef.current) {
+            const now = new Date();
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+            const scrollPosition = Math.max(0, (currentMinutes * (HOUR_HEIGHT / 60)) - 100);
+            scrollRef.current.scrollTo({ y: scrollPosition, animated: true });
+        }
+    }, [selectedDate]);
+
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <SafeAreaView style={styles.container}>
@@ -272,7 +283,10 @@ export default function CalendarScreen({ navigation }) {
                 </View>
 
                 {/* Timeline */}
-                <ScrollView contentContainerStyle={styles.scrollContent}>
+                <ScrollView
+                    ref={scrollRef}
+                    contentContainerStyle={styles.scrollContent}
+                >
                     <View style={styles.timelineContainer}>
                         {renderTimeLines()}
 

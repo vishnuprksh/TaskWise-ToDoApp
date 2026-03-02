@@ -21,7 +21,7 @@ export default function HomePage({ onNavigateTimer }) {
   const [taskText, setTaskText] = useState('');
   const [selectedProject, setSelectedProject] = useState(null);
   const [projectSearchText, setProjectSearchText] = useState('');
-  const [attributes, setAttributes] = useState({ easiness: 'medium', importance: 'medium', emergency: 'medium', interest: 'medium' });
+  const [attributes, setAttributes] = useState({ easiness: 'high', importance: 'high', emergency: 'high', interest: 'high' });
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
 
@@ -75,7 +75,7 @@ export default function HomePage({ onNavigateTimer }) {
       setTaskText('');
       setSelectedProject(selectedFilterProject || (projects.length > 0 ? projects[0].id : null));
       setProjectSearchText('');
-      setAttributes({ easiness: 'medium', importance: 'medium', emergency: 'medium', interest: 'medium' });
+      setAttributes({ easiness: 'high', importance: 'high', emergency: 'high', interest: 'high' });
       setStartDate(null);
       setEndDate(null);
     }

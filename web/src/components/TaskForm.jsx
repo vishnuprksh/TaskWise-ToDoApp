@@ -15,8 +15,6 @@ export default function TaskForm({
   onSave, onClose,
   onNewProject,
 }) {
-  const [isAttributesExpanded, setIsAttributesExpanded] = useState(false);
-
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
@@ -88,19 +86,13 @@ export default function TaskForm({
 
         <div className="divider" />
 
-        <div className="expandable-header" onClick={() => setIsAttributesExpanded(!isAttributesExpanded)}>
-          <span className="section-title" style={{ marginBottom: 0 }}>Priority Attributes</span>
-          {isAttributesExpanded ? <ChevronUp size={20} color="#94a3b8" /> : <ChevronDown size={20} color="#94a3b8" />}
+        <div className="section-title">Priority Attributes</div>
+        <div style={{ marginTop: 12 }}>
+          <AttributeSelector label="Easiness (40%)" value={attributes.easiness} onChange={(v) => setAttributes({ ...attributes, easiness: v })} />
+          <AttributeSelector label="Importance (30%)" value={attributes.importance} onChange={(v) => setAttributes({ ...attributes, importance: v })} />
+          <AttributeSelector label="Emergency (20%)" value={attributes.emergency} onChange={(v) => setAttributes({ ...attributes, emergency: v })} />
+          <AttributeSelector label="Interest (10%)" value={attributes.interest} onChange={(v) => setAttributes({ ...attributes, interest: v })} />
         </div>
-
-        {isAttributesExpanded && (
-          <div style={{ marginTop: 12 }}>
-            <AttributeSelector label="Easiness (40%)" value={attributes.easiness} onChange={(v) => setAttributes({ ...attributes, easiness: v })} />
-            <AttributeSelector label="Importance (30%)" value={attributes.importance} onChange={(v) => setAttributes({ ...attributes, importance: v })} />
-            <AttributeSelector label="Emergency (20%)" value={attributes.emergency} onChange={(v) => setAttributes({ ...attributes, emergency: v })} />
-            <AttributeSelector label="Interest (10%)" value={attributes.interest} onChange={(v) => setAttributes({ ...attributes, interest: v })} />
-          </div>
-        )}
 
         <button className="btn btn-primary" style={{ width: '100%', marginTop: 20, padding: 16 }} onClick={onSave}>
           Save Task

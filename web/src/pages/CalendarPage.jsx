@@ -38,7 +38,7 @@ export default function CalendarPage() {
       const deltaY = e.clientY - resizeStartY;
       const deltaMinutes = Math.round(deltaY / (HOUR_HEIGHT / 60) / 15) * 15; // Snap to 15 min
       const newDuration = Math.max(15, resizeStartDuration + deltaMinutes);
-      
+
       setResizingTask(prev => ({ ...prev, duration: newDuration }));
     };
 
@@ -105,9 +105,12 @@ export default function CalendarPage() {
   }, [draggingTask, dragStartY, dragStartMinutes, dragStartDateISO]);
 
   useEffect(() => {
-    // Scroll to 6 AM on load
+    // Scroll to current time or 6 AM if scrollRef.current is available
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = 6 * HOUR_HEIGHT;
+      const now = new Date();
+      const currentMinutes = now.getHours() * 60 + now.getMinutes();
+      const scrollPosition = Math.max(0, (currentMinutes * (HOUR_HEIGHT / 60)) - 100); // 100px offset to see a bit above
+      scrollRef.current.scrollTop = scrollPosition;
     }
   }, []);
 
@@ -258,7 +261,7 @@ export default function CalendarPage() {
                   {dayTasks.map((task) => {
                     // Use resizing task if this is the one being resized
                     const displayTask = (resizingTask && resizingTask.id === task.id) ? resizingTask : task;
-                    
+
                     const startDate = new Date(displayTask.scheduledAt);
                     const startMinutes = startDate.getHours() * 60 + startDate.getMinutes();
                     const duration = displayTask.duration || 60;
@@ -295,8 +298,8 @@ export default function CalendarPage() {
                           {safeFormat(startDate, 'h:mm a')} – {safeFormat(endTime, 'h:mm a')}
                           {isResizing && ` (${duration}m)`}
                         </div>
-                        <div 
-                          className="calendar-event-resize-handle" 
+                        <div
+                          className="calendar-event-resize-handle"
                           onMouseDown={(e) => { e.stopPropagation(); startResize(e, task); }}
                         />
                       </div>

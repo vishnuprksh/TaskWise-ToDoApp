@@ -109,10 +109,10 @@ export const AppProvider = ({ children }) => {
         parsedTasks = parsedTasks.map((task) => {
           if (!task.attributes || task.priorityScore === undefined || task.timeSpent === undefined) {
             const defaultAttributes = {
-              easiness: task.attributes?.size || 'medium',
-              importance: 'medium',
-              emergency: 'medium',
-              interest: 'medium',
+              easiness: 'high',
+              importance: 'high',
+              emergency: 'high',
+              interest: 'high',
             };
             return {
               ...task,

@@ -36,7 +36,6 @@ const TaskForm = ({
 }) => {
     const [showStartPicker, setShowStartPicker] = React.useState(false);
     const [showEndPicker, setShowEndPicker] = React.useState(false);
-    const [isAttributesExpanded, setIsAttributesExpanded] = React.useState(false);
 
     const onStartChange = (event, selectedDate) => {
         setShowStartPicker(Platform.OS === 'ios');
@@ -181,42 +180,29 @@ const TaskForm = ({
 
                 <View style={styles.divider} />
 
-                <TouchableOpacity
-                    style={styles.expandableHeader}
-                    onPress={() => setIsAttributesExpanded(!isAttributesExpanded)}
-                >
-                    <Text style={styles.sectionTitle}>Priority Attributes</Text>
-                    {isAttributesExpanded ? (
-                        <ChevronUp size={20} color="#94a3b8" />
-                    ) : (
-                        <ChevronDown size={20} color="#94a3b8" />
-                    )}
-                </TouchableOpacity>
-
-                {isAttributesExpanded && (
-                    <View style={styles.attributesSection}>
-                        <AttributeSelector
-                            label="Easiness (40%)"
-                            value={attributes.easiness}
-                            onChange={(val) => setAttributes({ ...attributes, easiness: val })}
-                        />
-                        <AttributeSelector
-                            label="Importance (30%)"
-                            value={attributes.importance}
-                            onChange={(val) => setAttributes({ ...attributes, importance: val })}
-                        />
-                        <AttributeSelector
-                            label="Emergency (20%)"
-                            value={attributes.emergency}
-                            onChange={(val) => setAttributes({ ...attributes, emergency: val })}
-                        />
-                        <AttributeSelector
-                            label="Interest (10%)"
-                            value={attributes.interest}
-                            onChange={(val) => setAttributes({ ...attributes, interest: val })}
-                        />
-                    </View>
-                )}
+                <Text style={styles.sectionTitle}>Priority Attributes</Text>
+                <View style={styles.attributesSection}>
+                    <AttributeSelector
+                        label="Easiness (40%)"
+                        value={attributes.easiness}
+                        onChange={(val) => setAttributes({ ...attributes, easiness: val })}
+                    />
+                    <AttributeSelector
+                        label="Importance (30%)"
+                        value={attributes.importance}
+                        onChange={(val) => setAttributes({ ...attributes, importance: val })}
+                    />
+                    <AttributeSelector
+                        label="Emergency (20%)"
+                        value={attributes.emergency}
+                        onChange={(val) => setAttributes({ ...attributes, emergency: val })}
+                    />
+                    <AttributeSelector
+                        label="Interest (10%)"
+                        value={attributes.interest}
+                        onChange={(val) => setAttributes({ ...attributes, interest: val })}
+                    />
+                </View>
             </ScrollView>
 
             <TouchableOpacity style={styles.saveButton} onPress={onSave}>
