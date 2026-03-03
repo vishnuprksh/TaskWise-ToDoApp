@@ -324,6 +324,7 @@ export const AppProvider = ({ children }) => {
         updateTaskSchedule,
         cancelTaskSchedule,
         duplicateTask,
+        findNextAvailableSlot,
         calculatePriorityScore,
       }}
     >

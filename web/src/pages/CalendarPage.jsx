@@ -2,18 +2,35 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { format, addDays, subDays, isSameDay, startOfWeek, endOfWeek, eachDayOfInterval } from 'date-fns';
 import { useApp } from '../context/AppContext';
-import { isValidDate, safeFormat } from '../utils/time';
+import { isValidDate, safeFormat, roundToNearest15Minutes } from '../utils/time';
 import ScheduleModal from '../components/ScheduleModal';
+import TaskForm from '../components/TaskForm';
+import ProjectForm from '../components/ProjectForm';
 
 const HOUR_HEIGHT = 80;
 
 export default function CalendarPage() {
-  const { tasks, updateTaskSchedule, projects, duplicateTask, cancelTaskSchedule } = useApp();
+  const { tasks, updateTasks, updateTaskSchedule, projects, updateProjects, duplicateTask, cancelTaskSchedule, calculatePriorityScore, findNextAvailableSlot } = useApp();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState(null);
   const scrollRef = useRef(null);
   const dragOccurredRef = useRef(false);
+
+  // Task form state
+  const [editingTask, setEditingTask] = useState(null);
+  const [taskText, setTaskText] = useState('');
+  const [selectedProject, setSelectedProject] = useState(null);
+  const [projectSearchText, setProjectSearchText] = useState('');
+  const [attributes, setAttributes] = useState({ easiness: 'high', importance: 'high', emergency: 'high', interest: 'high' });
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+  const [scheduledAtAtCreate, setScheduledAtAtCreate] = useState(null);
+
+  const [showProjectModal, setShowProjectModal] = useState(false);
+  const [projectName, setProjectName] = useState('');
+  const [projectColor, setProjectColor] = useState('#3b82f6');
 
   // Drag-to-resize state
   const [resizingTask, setResizingTask] = useState(null);
@@ -142,20 +159,6 @@ export default function CalendarPage() {
     setDragStartDateISO(task.scheduledAt);
   };
 
-  const handleUpdateTask = (taskId, updates) => {
-    const task = tasks.find((t) => t.id === taskId);
-    if (!task || !isValidDate(task.scheduledAt)) return;
-    if (updates.newHours !== undefined) {
-      const newDate = new Date(task.scheduledAt);
-      newDate.setHours(updates.newHours);
-      newDate.setMinutes(updates.newMinutes);
-      updateTaskSchedule(taskId, newDate, task.duration);
-    }
-    if (updates.newDuration !== undefined) {
-      updateTaskSchedule(taskId, new Date(task.scheduledAt), updates.newDuration);
-    }
-  };
-
   const getProject = (id) => projects.find((p) => p.id === id);
 
   const handleEventPress = (task) => {
@@ -181,6 +184,86 @@ export default function CalendarPage() {
     setTaskToEdit(null);
   };
 
+  const handleColumnClick = (e, date) => {
+    if (draggingTask || resizingTask) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const y = e.clientY - rect.top;
+    const minutes = Math.floor(y / (HOUR_HEIGHT / 60) / 15) * 15;
+
+    const clickTime = new Date(date);
+    clickTime.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+
+    openTaskModal(null, clickTime.toISOString());
+  };
+
+  const openTaskModal = (task = null, scheduledAt = null) => {
+    if (task) {
+      setEditingTask(task);
+      setTaskText(task.text);
+      setSelectedProject(task.projectId);
+      setAttributes(task.attributes || { easiness: 'medium', importance: 'medium', emergency: 'medium', interest: 'medium' });
+      setStartDate(isValidDate(task.startDate) ? task.startDate.slice(0, 10) : null);
+      setEndDate(isValidDate(task.endDate) ? task.endDate.slice(0, 10) : null);
+      setScheduledAtAtCreate(task.scheduledAt);
+    } else {
+      setEditingTask(null);
+      setTaskText('');
+      setSelectedProject(projects.length > 0 ? projects[0].id : null);
+      setProjectSearchText('');
+      setAttributes({ easiness: 'high', importance: 'high', emergency: 'high', interest: 'high' });
+      setStartDate(null);
+      setEndDate(null);
+      setScheduledAtAtCreate(scheduledAt);
+    }
+    setIsTaskModalOpen(true);
+  };
+
+  const closeTaskModal = () => setIsTaskModalOpen(false);
+
+  const handleSaveTask = () => {
+    if (!taskText.trim()) return;
+    const priorityScore = calculatePriorityScore(attributes);
+    const newTask = {
+      ...(editingTask || {}),
+      id: editingTask ? editingTask.id : Date.now().toString(),
+      text: taskText,
+      completed: editingTask ? editingTask.completed : false,
+      projectId: selectedProject,
+      attributes,
+      priorityScore,
+      startDate: startDate || null,
+      endDate: endDate || null,
+      scheduledAt: scheduledAtAtCreate,
+      isEvent: !!scheduledAtAtCreate,
+      duration: (editingTask && editingTask.duration) || 60,
+    };
+
+    let newTasks;
+    if (editingTask) {
+      newTasks = tasks.map((t) => (t.id === editingTask.id ? newTask : t));
+    } else {
+      newTasks = [...tasks, newTask];
+    }
+    updateTasks(newTasks);
+    closeTaskModal();
+  };
+
+  const handleSaveProject = () => {
+    if (!projectName.trim()) return;
+    const newProject = {
+      id: Date.now().toString(),
+      name: projectName,
+      color: projectColor,
+      archived: false,
+    };
+    updateProjects([...projects, newProject]);
+    setShowProjectModal(false);
+    setProjectName('');
+    setSelectedProject(newProject.id);
+    setIsTaskModalOpen(true);
+  };
+
   const renderTimeLines = () => {
     const lines = [];
     for (let i = 0; i < 24; i++) {
@@ -203,13 +286,13 @@ export default function CalendarPage() {
       <div className="page-header">
         <h2>Calendar</h2>
         <div className="calendar-nav">
-          <button onClick={() => setSelectedDate(subDays(selectedDate, 7))}><ChevronLeft size={22} /></button>
-          <div style={{ textAlign: 'center', cursor: 'pointer' }} onDoubleClick={() => setSelectedDate(new Date())}>
+          <button className="btn-ghost" onClick={() => setSelectedDate(subDays(selectedDate, 7))}><ChevronLeft size={22} /></button>
+          <div style={{ textAlign: 'center', cursor: 'pointer', flex: 1 }} onDoubleClick={() => setSelectedDate(new Date())}>
             <div className="calendar-date-title">
               {format(weekStart, 'MMM d')} – {format(weekEnd, isSameDay(weekStart, weekEnd) ? 'MMM d' : 'MMM d, yyyy')}
             </div>
           </div>
-          <button onClick={() => setSelectedDate(addDays(selectedDate, 7))}><ChevronRight size={22} /></button>
+          <button className="btn-ghost" onClick={() => setSelectedDate(addDays(selectedDate, 7))}><ChevronRight size={22} /></button>
         </div>
         <div style={{ width: 140 }}>
           <input
@@ -253,6 +336,7 @@ export default function CalendarPage() {
                   data-date={dateStr}
                   className={`calendar-column ${isToday ? 'today' : ''}`}
                   style={{ cursor: draggingTask ? 'grabbing' : 'default' }}
+                  onClick={(e) => handleColumnClick(e, date)}
                 >
                   {isToday && (
                     <div className="current-time-line" style={{ top: nowMinutes * (HOUR_HEIGHT / 60) }} />
@@ -353,6 +437,31 @@ export default function CalendarPage() {
         task={taskToEdit}
         initialDate={taskToEdit?.scheduledAt}
       />
+
+      {isTaskModalOpen && (
+        <TaskForm
+          isEditing={!!editingTask}
+          taskText={taskText} setTaskText={setTaskText}
+          projects={projects}
+          selectedProject={selectedProject} setSelectedProject={setSelectedProject}
+          projectSearchText={projectSearchText} setProjectSearchText={setProjectSearchText}
+          attributes={attributes} setAttributes={setAttributes}
+          startDate={startDate} setStartDate={setStartDate}
+          endDate={endDate} setEndDate={setEndDate}
+          onSave={handleSaveTask}
+          onClose={closeTaskModal}
+          onNewProject={() => { closeTaskModal(); setShowProjectModal(true); }}
+        />
+      )}
+
+      {showProjectModal && (
+        <ProjectForm
+          name={projectName} setName={setProjectName}
+          color={projectColor} setColor={setProjectColor}
+          onSave={handleSaveProject}
+          onClose={() => setShowProjectModal(false)}
+        />
+      )}
     </>
   );
 }

@@ -5,9 +5,10 @@ import { isValidDate, roundToNearest15Minutes } from '../utils/time';
 import TaskItem from '../components/TaskItem';
 import TaskForm from '../components/TaskForm';
 import ScheduleModal from '../components/ScheduleModal';
+import ProjectForm from '../components/ProjectForm';
 
 export default function HomePage({ onNavigateTimer }) {
-  const { tasks, projects, updateTasks, calculatePriorityScore, updateTaskSchedule, findNextAvailableSlot } = useApp();
+  const { tasks, projects, updateTasks, updateProjects, calculatePriorityScore, updateTaskSchedule, findNextAvailableSlot } = useApp();
 
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
@@ -26,6 +27,8 @@ export default function HomePage({ onNavigateTimer }) {
   const [endDate, setEndDate] = useState(null);
 
   const [showProjectModal, setShowProjectModal] = useState(false);
+  const [projectName, setProjectName] = useState('');
+  const [projectColor, setProjectColor] = useState('#3b82f6');
 
   const handleSaveTask = () => {
     if (!taskText.trim()) return;
@@ -50,6 +53,21 @@ export default function HomePage({ onNavigateTimer }) {
     }
     updateTasks(newTasks);
     closeTaskModal();
+  };
+
+  const handleSaveProject = () => {
+    if (!projectName.trim()) return;
+    const newProject = {
+      id: Date.now().toString(),
+      name: projectName,
+      color: projectColor,
+      archived: false,
+    };
+    updateProjects([...projects, newProject]);
+    setShowProjectModal(false);
+    setProjectName('');
+    setSelectedProject(newProject.id);
+    setIsTaskModalOpen(true);
   };
 
   const deleteTask = (id) => {
@@ -215,6 +233,15 @@ export default function HomePage({ onNavigateTimer }) {
         initialDate={taskToSchedule?.scheduledAt}
         defaultTime={defaultTime}
       />
+
+      {showProjectModal && (
+        <ProjectForm
+          name={projectName} setName={setProjectName}
+          color={projectColor} setColor={setProjectColor}
+          onSave={handleSaveProject}
+          onClose={() => setShowProjectModal(false)}
+        />
+      )}
     </>
   );
 }
