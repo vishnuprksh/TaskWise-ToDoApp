@@ -9,8 +9,11 @@ import {
     TextInput,
     Alert,
     Switch,
+    Vibration,
+    Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Notifications from 'expo-notifications';
 import {
     ArrowLeft,
     Play,
@@ -232,16 +235,25 @@ export default function TimerScreen({ navigation, route }) {
     const loadSettings = async () => {
         try {
             const saved = await AsyncStorage.getItem(STORAGE_KEY_SETTINGS);
+            let finalDurations = DEFAULT_DURATIONS;
             if (saved) {
                 const parsed = JSON.parse(saved);
                 if (parsed.durations) {
                     setDurations(parsed.durations);
+                    finalDurations = parsed.durations;
                     setShowBreaks(parsed.showBreaks !== undefined ? parsed.showBreaks : true);
                 } else {
                     // Legacy format: settings were just durations
                     setDurations(parsed);
+                    finalDurations = parsed;
                 }
             }
+            
+            // Auto-start timer on load
+            const initialTime = finalDurations[currentMode] * 60;
+            setTimeLeft(initialTime);
+            sessionDurationRef.current = initialTime;
+            setIsActive(true);
         } catch (e) {
             console.error(e);
         }
@@ -249,7 +261,10 @@ export default function TimerScreen({ navigation, route }) {
 
     const saveSettings = async (newDurations, newShowBreaks) => {
         try {
-            await AsyncStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify({ durations: newDurations, showBreaks: newShowBreaks }));
+            await AsyncStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify({
+                durations: newDurations,
+                showBreaks: newShowBreaks,
+            }));
             setDurations(newDurations);
             setShowBreaks(newShowBreaks);
             // If breaks are being hidden, switch to WORK mode
@@ -296,11 +311,26 @@ export default function TimerScreen({ navigation, route }) {
                 true
             );
 
-        } else if (timeLeft === 0) {
+        } else if (timeLeft === 0 && isActive) {
             setIsActive(false);
             clearInterval(interval);
             breathing.value = withTiming(1);
-            Alert.alert("Timer Finished", "Good job!", [{ text: "OK" }]);
+
+            // Vibrate phone
+            Vibration.vibrate([0, 500, 250, 500]);
+
+            // Show a notification routed to the correct Android channel
+            Notifications.scheduleNotificationAsync({
+                content: {
+                    title: 'Timer Finished',
+                    body: "Good job! You've completed your focus session.",
+                    sound: true,
+                    ...(Platform.OS === 'android' ? { channelId: 'timer-notifications-v2' } : {}),
+                },
+                trigger: null,
+            });
+
+            Alert.alert('Timer Finished', 'Good job!', [{ text: 'OK' }]);
         } else {
             breathing.value = withTiming(1);
         }
@@ -667,6 +697,32 @@ const styles = StyleSheet.create({
         fontSize: 16,
         borderWidth: 1,
         borderColor: '#334155',
+    },
+    soundSelector: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 4,
+    },
+    soundOption: {
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        borderRadius: 12,
+        backgroundColor: '#0f172a',
+        borderWidth: 1,
+        borderColor: '#334155',
+    },
+    activeSoundOption: {
+        backgroundColor: '#6366f1',
+        borderColor: '#6366f1',
+    },
+    soundOptionText: {
+        color: '#94a3b8',
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    activeSoundOptionText: {
+        color: '#ffffff',
     },
     saveButton: {
         backgroundColor: '#6366f1',

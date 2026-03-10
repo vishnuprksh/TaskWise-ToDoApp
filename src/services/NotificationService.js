@@ -1,6 +1,14 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { Asset } from 'expo-asset';
 import { format } from 'date-fns';
+
+// Create a function to load assets for sounds
+const getSoundAsset = async () => {
+    const asset = Asset.fromModule(require('../../assets/sounds/happy_bells.wav'));
+    await asset.downloadAsync();
+    return asset;
+};
 
 // Configure notification handler
 Notifications.setNotificationHandler({
@@ -34,6 +42,18 @@ export const registerForPushNotificationsAsync = async () => {
             enableLights: true,
             enableVibrate: true,
             showBadge: true,
+        });
+
+        // Dedicated channel for timer completion with custom sound
+        await Notifications.setNotificationChannelAsync('timer-notifications-v2', {
+            name: 'Timer Notifications',
+            description: 'Alerts for when the Pomodoro timer finishes.',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 500, 250, 500, 250, 500],
+            lightColor: '#6366f1',
+            sound: 'happy_bells.wav',
+            enableLights: true,
+            enableVibrate: true,
         });
     }
 
