@@ -28,8 +28,9 @@
         <action android:name="android.intent.action.VIEW"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
-        <data android:scheme="exp+taskwise"/>
+        <data android:scheme="taskwise"/>
       </intent-filter>
+      <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
     </activity>
 
     <receiver android:name=".TaskWidgetProvider" android:exported="true">

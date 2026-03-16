@@ -11,9 +11,12 @@ import {
     Switch,
     Vibration,
     Platform,
+    DeviceEventEmitter,
 } from 'react-native';
+import { Audio } from 'expo-av';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
+import { COMMAND_TYPES } from '../utils/nlpUtils';
 import {
     ArrowLeft,
     Play,
@@ -248,7 +251,7 @@ export default function TimerScreen({ navigation, route }) {
                     finalDurations = parsed;
                 }
             }
-            
+
             // Auto-start timer on load
             const initialTime = finalDurations[currentMode] * 60;
             setTimeLeft(initialTime);
@@ -258,6 +261,26 @@ export default function TimerScreen({ navigation, route }) {
             console.error(e);
         }
     };
+
+    // Voice Command Listener
+    useEffect(() => {
+        const subscription = DeviceEventEmitter.addListener('timer-command', (data) => {
+            switch (data.type) {
+                case COMMAND_TYPES.START_POMODORO:
+                case COMMAND_TYPES.RESUME_TIMER:
+                    setIsActive(true);
+                    break;
+                case COMMAND_TYPES.PAUSE_TIMER:
+                case COMMAND_TYPES.STOP_TIMER:
+                    setIsActive(false);
+                    break;
+                case COMMAND_TYPES.RESET_TIMER:
+                    resetTimer();
+                    break;
+            }
+        });
+        return () => subscription.remove();
+    }, [resetTimer]);
 
     const saveSettings = async (newDurations, newShowBreaks) => {
         try {
@@ -319,16 +342,35 @@ export default function TimerScreen({ navigation, route }) {
             // Vibrate phone
             Vibration.vibrate([0, 500, 250, 500]);
 
-            // Show a notification routed to the correct Android channel
+            // Show a silent notification
             Notifications.scheduleNotificationAsync({
                 content: {
                     title: 'Timer Finished',
                     body: "Good job! You've completed your focus session.",
-                    sound: true,
+                    sound: false,
                     ...(Platform.OS === 'android' ? { channelId: 'timer-notifications-v2' } : {}),
                 },
                 trigger: null,
             });
+
+            // Play sound locally
+            const playCompletionSound = async () => {
+                try {
+                    const { sound } = await Audio.Sound.createAsync(
+                        require('../../assets/sounds/happy_bells.wav')
+                    );
+                    await sound.playAsync();
+                    // Automatically unload sound when finished to free memory
+                    sound.setOnPlaybackStatusUpdate((status) => {
+                        if (status.didJustFinish) {
+                            sound.unloadAsync();
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error playing completion sound:', error);
+                }
+            };
+            playCompletionSound();
 
             Alert.alert('Timer Finished', 'Good job!', [{ text: 'OK' }]);
         } else {

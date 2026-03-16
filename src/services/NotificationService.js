@@ -51,7 +51,7 @@ export const registerForPushNotificationsAsync = async () => {
             importance: Notifications.AndroidImportance.MAX,
             vibrationPattern: [0, 500, 250, 500, 250, 500],
             lightColor: '#6366f1',
-            sound: 'happy_bells.wav',
+            sound: null,
             enableLights: true,
             enableVibrate: true,
         });

@@ -8,14 +8,24 @@ import ProjectsScreen from './screens/ProjectsScreen';
 import TimerScreen from './screens/TimerScreen';
 import SettingsScreen from './screens/SettingsScreen';
 import CalendarScreen from './screens/CalendarScreen';
+import VoiceAssistant from './components/VoiceAssistant';
 
 const Stack = createNativeStackNavigator();
+
+const linking = {
+  prefixes: ['taskwise://'],
+  config: {
+    screens: {
+      Timer: 'timer',
+    },
+  },
+};
 
 export default function App() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AppProvider>
-        <NavigationContainer>
+        <NavigationContainer linking={linking}>
           <Stack.Navigator
             initialRouteName="Home"
             screenOptions={{
@@ -29,6 +39,7 @@ export default function App() {
             <Stack.Screen name="Calendar" component={CalendarScreen} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
           </Stack.Navigator>
+          <VoiceAssistant />
         </NavigationContainer>
       </AppProvider>
     </GestureHandlerRootView>
