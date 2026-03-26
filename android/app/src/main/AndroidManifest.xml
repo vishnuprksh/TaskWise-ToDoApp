@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-permission android:name="android.permission.INTERNET"/>
+  <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+  <uses-permission android:name="android.permission.RECORD_AUDIO"/>
   <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
   <uses-permission android:name="android.permission.VIBRATE"/>
   <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
@@ -29,22 +31,21 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="taskwise"/>
+        <data android:scheme="exp+taskwise"/>
       </intent-filter>
-      <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+      <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts"/>
     </activity>
-
     <receiver android:name=".TaskWidgetProvider" android:exported="true">
       <intent-filter>
-        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
       </intent-filter>
-      <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_tasks_info" />
+      <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_tasks_info"/>
     </receiver>
-
     <receiver android:name=".CalendarWidgetProvider" android:exported="true">
       <intent-filter>
-        <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+        <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
       </intent-filter>
-      <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_calendar_info" />
+      <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_calendar_info"/>
     </receiver>
   </application>
 </manifest>
