@@ -19,6 +19,14 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   String? _selectedProjectId;
   bool _isFinishedExpanded = false;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   void _showTaskForm({Task? task}) {
     showModalBottomSheet(
@@ -144,21 +152,63 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return projectsAsync.when(
       data: (projects) {
         final activeProjects = projects.where((p) => !p.archived).toList();
-        return Container(
-          height: 50,
-          margin: const EdgeInsets.only(bottom: 10),
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            children: [
-              _buildFilterChip(null, 'All Tasks'),
-              ...activeProjects.map((p) => _buildFilterChip(p.id, p.name)),
-            ],
-          ),
+        final filteredProjects = activeProjects
+            .where((p) => p.name.toLowerCase().contains(_searchQuery.toLowerCase()))
+            .toList();
+
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (val) => setState(() => _searchQuery = val),
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Search projects...',
+                  hintStyle: const TextStyle(color: Colors.grey),
+                  prefixIcon: const Icon(LucideIcons.search, color: Colors.grey, size: 20),
+                  suffixIcon: _searchQuery.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(LucideIcons.x, color: Colors.grey, size: 18),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _searchQuery = '');
+                          },
+                        )
+                      : null,
+                  filled: true,
+                  fillColor: const Color(0xFF1E293B),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+            Container(
+              height: 50,
+              margin: const EdgeInsets.only(bottom: 10),
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                children: [
+                  if (_searchQuery.isEmpty) _buildFilterChip(null, 'All Tasks'),
+                  ...filteredProjects.map((p) => _buildFilterChip(p.id, p.name)),
+                  if (filteredProjects.isEmpty && _searchQuery.isNotEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 15),
+                      child: Text('No projects found', style: TextStyle(color: Colors.grey, fontSize: 14)),
+                    ),
+                ],
+              ),
+            ),
+          ],
         );
       },
-      loading: () => const SizedBox(height: 50),
-      error: (_, __) => const SizedBox(height: 50),
+      loading: () => const SizedBox(height: 110), // Adjusted for search bar height
+      error: (_, __) => const SizedBox(height: 110),
     );
   }
 
