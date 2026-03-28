@@ -33,7 +33,10 @@ class TaskWiseApp extends ConsumerWidget {
           brightness: Brightness.dark,
         ),
         textTheme: GoogleFonts.interTextTheme(
-          ThemeData.dark().textTheme,
+          ThemeData.dark().textTheme.apply(
+                bodyColor: Colors.white,
+                displayColor: Colors.white,
+              ),
         ),
       ),
       home: authState.when(

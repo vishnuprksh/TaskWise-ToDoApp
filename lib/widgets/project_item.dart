@@ -32,6 +32,28 @@ class ProjectItem extends StatelessWidget {
         color: Colors.red,
         child: Icon(LucideIcons.trash2, color: Colors.white),
       ),
+      confirmDismiss: (direction) async {
+        return await showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1E293B),
+              title: const Text('Confirm', style: TextStyle(color: Colors.white)),
+              content: const Text('Are you sure you want to delete this project and all its tasks?', style: TextStyle(color: Colors.white70)),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('CANCEL'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('DELETE', style: TextStyle(color: Colors.red)),
+                ),
+              ],
+            );
+          },
+        );
+      },
       onDismissed: (_) => onDelete(),
       child: Card(
         margin: const EdgeInsets.only(bottom: 12),

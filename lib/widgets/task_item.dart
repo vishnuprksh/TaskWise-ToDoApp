@@ -28,6 +28,28 @@ class TaskItem extends StatelessWidget {
         color: Colors.red,
         child: Icon(LucideIcons.trash2, color: Colors.white),
       ),
+      confirmDismiss: (direction) async {
+        return await showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1E293B),
+              title: const Text('Confirm', style: TextStyle(color: Colors.white)),
+              content: const Text('Are you sure you want to delete this task?', style: TextStyle(color: Colors.white70)),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('CANCEL'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('DELETE', style: TextStyle(color: Colors.red)),
+                ),
+              ],
+            );
+          },
+        );
+      },
       onDismissed: (_) => onDelete(),
       child: ListTile(
         onTap: onTap,
@@ -42,13 +64,13 @@ class TaskItem extends StatelessWidget {
           task.text,
           style: TextStyle(
             decoration: task.completed ? TextDecoration.lineThrough : null,
-            color: task.completed ? Colors.grey : Colors.black87,
+            color: task.completed ? Colors.grey : Colors.white.withOpacity(0.9),
           ),
         ),
         subtitle: task.scheduledAt != null
             ? Text(
                 'Scheduled: ${task.scheduledAt!.day}/${task.scheduledAt!.month} ${task.scheduledAt!.hour}:${task.scheduledAt!.minute}',
-                style: const TextStyle(fontSize: 12),
+                style: TextStyle(fontSize: 12, color: Colors.white.withOpacity(0.6)),
               )
             : null,
         trailing: Row(

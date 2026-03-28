@@ -18,6 +18,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   String? _selectedProjectId;
+  bool _isFinishedExpanded = false;
 
   void _showTaskForm({Task? task}) {
     showModalBottomSheet(
@@ -63,11 +64,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ...ongoingTasks.map((task) => _buildTaskItem(task)),
                           ],
                           if (finishedTasks.isNotEmpty) ...[
-                            const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 10),
-                              child: Text('Finished', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                            InkWell(
+                              onTap: () => setState(() => _isFinishedExpanded = !_isFinishedExpanded),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text('Finished', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                                    Icon(
+                                      _isFinishedExpanded ? LucideIcons.chevronUp : LucideIcons.chevronDown,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                            ...finishedTasks.map((task) => _buildTaskItem(task)),
+                            if (_isFinishedExpanded)
+                              ...finishedTasks.map((task) => _buildTaskItem(task)),
                           ],
                           if (filteredTasks.isEmpty)
                             const Center(

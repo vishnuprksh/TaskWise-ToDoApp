@@ -34,15 +34,9 @@ class Task {
       projectId: data['projectId'],
       priorityScore: (data['priorityScore'] ?? 0.0).toDouble(),
       timeSpent: data['timeSpent'] ?? 0,
-      scheduledAt: data['scheduledAt'] != null 
-          ? (data['scheduledAt'] as Timestamp).toDate() 
-          : null,
-      startDate: data['startDate'] != null 
-          ? (data['startDate'] as Timestamp).toDate() 
-          : null,
-      endDate: data['endDate'] != null 
-          ? (data['endDate'] as Timestamp).toDate() 
-          : null,
+      scheduledAt: _parseDateTime(data['scheduledAt']),
+      startDate: _parseDateTime(data['startDate']),
+      endDate: _parseDateTime(data['endDate']),
       attributes: Map<String, String>.from(data['attributes'] ?? {
         'easiness': 'medium',
         'importance': 'medium',
@@ -50,6 +44,13 @@ class Task {
         'interest': 'medium',
       }),
     );
+  }
+
+  static DateTime? _parseDateTime(dynamic value) {
+    if (value == null) return null;
+    if (value is Timestamp) return value.toDate();
+    if (value is String) return DateTime.tryParse(value);
+    return null;
   }
 
   Map<String, dynamic> toFirestore() {

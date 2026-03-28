@@ -118,7 +118,7 @@ class _VoiceAssistantState extends ConsumerState<VoiceAssistant> with SingleTick
             ),
           ),
         Positioned(
-          bottom: 30,
+          bottom: 100, // Move it higher to avoid overlapping with FAB
           right: 20,
           child: Column(
             mainAxisSize: MainAxisSize.min,
