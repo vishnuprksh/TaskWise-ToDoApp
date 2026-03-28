@@ -16,7 +16,13 @@ const linking = {
   prefixes: ['taskwise://'],
   config: {
     screens: {
-      Timer: 'timer',
+      Timer: {
+        path: 'timer',
+        parse: {
+          action: (action) => action,
+          name: (name) => name,
+        },
+      },
     },
   },
 };

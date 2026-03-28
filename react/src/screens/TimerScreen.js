@@ -159,8 +159,17 @@ const TimerSettingsModal = ({ visible, onClose, onSave, initialDurations, initia
 };
 
 export default function TimerScreen({ navigation, route }) {
-    const { task } = route.params;
+    const { task, action, name } = route.params || {};
     const { updateTaskTime } = useApp();
+
+    const [currentTask, setCurrentTask] = useState(task || { id: 'default', text: 'Quick Session' });
+
+    // Handle deep link name
+    useEffect(() => {
+        if (name) {
+            setCurrentTask({ id: 'voice-session', text: name.charAt(0).toUpperCase() + name.slice(1) });
+        }
+    }, [name]);
 
     // Settings State
     const [durations, setDurations] = useState(DEFAULT_DURATIONS);
@@ -190,32 +199,12 @@ export default function TimerScreen({ navigation, route }) {
         loadSettings();
     }, []);
 
-    // Navigation guard: prevent going back while timer is active or paused
+    // Handle deep link action
     useEffect(() => {
-        const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-            const isSessionInProgress = isActive || (timeLeftRef.current < sessionDurationRef.current && timeLeftRef.current > 0);
-
-            if (!isSessionInProgress) return;
-
-            e.preventDefault();
-            Alert.alert(
-                'Stop Timer?',
-                'Going back will break your focus session. Are you sure?',
-                [
-                    { text: 'Stay', style: 'cancel' },
-                    {
-                        text: 'Leave',
-                        style: 'destructive',
-                        onPress: () => {
-                            setIsActive(false);
-                            navigation.dispatch(e.data.action);
-                        },
-                    },
-                ]
-            );
-        });
-        return unsubscribe;
-    }, [navigation, isActive]);
+        if (action === 'start') {
+            setIsActive(true);
+        }
+    }, [action]);
 
     // Effect to update time left when mode changes or durations load
     useEffect(() => {
@@ -318,7 +307,7 @@ export default function TimerScreen({ navigation, route }) {
                     });
 
                     if (currentMode === MODES.WORK) {
-                        updateTaskTime(task.id, 1);
+                        updateTaskTime(currentTask.id, 1);
                     }
                     lastTickRef.current = now;
                 }
@@ -490,12 +479,12 @@ export default function TimerScreen({ navigation, route }) {
                     <Text style={styles.taskLabel}>
                         {currentMode === MODES.WORK ? 'Current Task' : 'Take a Break'}
                     </Text>
-                    <Text style={styles.taskText}>{task.text}</Text>
+                    <Text style={styles.taskText}>{currentTask.text}</Text>
                     {currentMode === MODES.WORK && (
                         <View style={styles.totalTimeContainer}>
                             <Clock size={16} color="#94a3b8" />
                             <Text style={styles.totalTimeText}>
-                                Total Focus: {formatTime(task.timeSpent || 0)}
+                                Total Focus: {formatTime(currentTask.timeSpent || 0)}
                             </Text>
                         </View>
                     )}

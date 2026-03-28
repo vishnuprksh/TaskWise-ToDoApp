@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../services/voice_service.dart';
@@ -100,19 +101,26 @@ class _VoiceAssistantState extends ConsumerState<VoiceAssistant> with SingleTick
             bottom: 100,
             right: 20,
             left: 20,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0F172A).withOpacity(0.9),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: const Color(0xFF334155)),
-              ),
-              child: Text(
-                _transcript,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(24),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(20),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: Colors.white.withAlpha(40)),
+                  ),
+                  child: Text(
+                    _transcript,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -127,18 +135,18 @@ class _VoiceAssistantState extends ConsumerState<VoiceAssistant> with SingleTick
                 alignment: Alignment.center,
                 children: [
                   ScaleTransition(
-                    scale: Tween<double>(begin: 1.0, end: 1.5).animate(
-                      CurvedAnimation(parent: _pulseController, curve: Curves.linear),
+                    scale: Tween<double>(begin: 1.0, end: 1.8).animate(
+                      CurvedAnimation(parent: _pulseController, curve: Curves.easeOut),
                     ),
                     child: FadeTransition(
-                      opacity: Tween<double>(begin: 0.5, end: 0.0).animate(
-                        CurvedAnimation(parent: _pulseController, curve: Curves.linear),
+                      opacity: Tween<double>(begin: 0.6, end: 0.0).animate(
+                        CurvedAnimation(parent: _pulseController, curve: Curves.easeOut),
                       ),
                       child: Container(
                         width: 56,
                         height: 56,
-                        decoration: const BoxDecoration(
-                          color: Color(0xFF6366F1),
+                        decoration: BoxDecoration(
+                          color: _isListening ? Colors.redAccent : const Color(0xFF6366F1),
                           shape: BoxShape.circle,
                         ),
                       ),
@@ -150,20 +158,26 @@ class _VoiceAssistantState extends ConsumerState<VoiceAssistant> with SingleTick
                       width: 56,
                       height: 56,
                       decoration: BoxDecoration(
-                        color: _isListening ? Colors.red : const Color(0xFF6366F1),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: _isListening
+                              ? [Colors.redAccent, Colors.red]
+                              : [const Color(0xFF818CF8), const Color(0xFF6366F1)],
+                        ),
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.25),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
+                            color: (_isListening ? Colors.redAccent : const Color(0xFF6366F1)).withAlpha(100),
+                            blurRadius: 15,
+                            offset: const Offset(0, 4),
                           ),
                         ],
                       ),
                       child: Icon(
                         _isListening ? LucideIcons.x : LucideIcons.mic,
                         color: Colors.white,
-                        size: 24,
+                        size: 26,
                       ),
                     ),
                   ),

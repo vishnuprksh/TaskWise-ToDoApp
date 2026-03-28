@@ -97,7 +97,8 @@ class _ProjectFormState extends ConsumerState<ProjectForm> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: _colors.map((colorStr) {
-                final color = Color(int.parse(colorStr.replaceFirst('#', '0xFF')));
+                final project = Project(id: '', name: '', color: colorStr);
+                final color = project.colorValue;
                 return GestureDetector(
                   onTap: () => setState(() => _selectedColor = colorStr),
                   child: Container(

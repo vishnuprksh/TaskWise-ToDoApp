@@ -16,55 +16,104 @@ class ProjectsScreen extends ConsumerWidget {
     final tasksAsync = ref.watch(tasksProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(LucideIcons.arrowLeft, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text('Projects', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        actions: [
-          IconButton(
-            icon: const Icon(LucideIcons.plus, color: Colors.white),
-            onPressed: () => _showProjectForm(context),
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF0F172A),
+              Color(0xFF1E1B4B),
+              Color(0xFF0F172A),
+            ],
           ),
-        ],
-      ),
-      body: projectsAsync.when(
-        data: (projects) {
-          return tasksAsync.when(
-            data: (tasks) {
-              return ListView.builder(
-                padding: const EdgeInsets.all(20),
-                itemCount: projects.length,
-                itemBuilder: (context, index) {
-                  final project = projects[index];
-                  final totalTime = tasks
-                      .where((t) => t.projectId == project.id)
-                      .fold(0, (sum, t) => sum + (t.timeSpent));
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(LucideIcons.arrowLeft, color: Colors.white, size: 20),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    const Text(
+                      'Projects', 
+                      style: TextStyle(
+                        color: Colors.white, 
+                        fontSize: 28, 
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    IconButton(
+                      icon: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF6366F1).withAlpha(40),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: const Color(0xFF6366F1).withAlpha(100)),
+                        ),
+                        child: const Icon(LucideIcons.plus, color: Color(0xFF818CF8), size: 20),
+                      ),
+                      onPressed: () => _showProjectForm(context),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: projectsAsync.when(
+                  data: (projects) {
+                    return tasksAsync.when(
+                      data: (tasks) {
+                        return ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                          itemCount: projects.length,
+                          itemBuilder: (context, index) {
+                            final project = projects[index];
+                            final totalTime = tasks
+                                .where((t) => t.projectId == project.id)
+                                .fold(0, (sum, t) => sum + (t.timeSpent));
 
-                  return ProjectItem(
-                    project: project,
-                    totalTime: totalTime,
-                    onEdit: () => _showProjectForm(context, project: project),
-                    onToggleArchive: () {
-                      ref.read(firestoreServiceProvider).updateProject(project.id, {
-                        'archived': !project.archived,
-                      });
-                    },
-                    onDelete: () => _confirmDelete(context, ref, project.id),
-                  );
-                },
-              );
-            },
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (err, _) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.white))),
-          );
-        },
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (err, _) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.white))),
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 16),
+                              child: ProjectItem(
+                                project: project,
+                                totalTime: totalTime,
+                                onEdit: () => _showProjectForm(context, project: project),
+                                onToggleArchive: () {
+                                  ref.read(firestoreServiceProvider).updateProject(project.id, {
+                                    'archived': !project.archived,
+                                  });
+                                },
+                                onDelete: () => _confirmDelete(context, ref, project.id),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (err, _) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.white))),
+                    );
+                  },
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (err, _) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.white))),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

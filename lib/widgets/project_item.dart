@@ -21,7 +21,7 @@ class ProjectItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = Color(int.parse(project.color.replaceFirst('#', '0xFF')));
+    final color = project.colorValue;
 
     return Dismissible(
       key: Key('project-${project.id}'),

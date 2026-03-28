@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 
 class Project {
   final String id;
@@ -12,6 +13,11 @@ class Project {
     required this.color,
     this.archived = false,
   });
+
+  Color get colorValue {
+    final hex = color.replaceFirst('#', '');
+    return Color(int.parse('0xFF$hex'));
+  }
 
   factory Project.fromFirestore(DocumentSnapshot doc) {
     Map data = doc.data() as Map<String, dynamic>;

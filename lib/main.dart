@@ -34,6 +34,21 @@ class TaskWiseApp extends ConsumerWidget {
           seedColor: const Color(0xFF6366F1),
           brightness: Brightness.dark,
         ),
+        scaffoldBackgroundColor: const Color(0xFF0F172A),
+        cardTheme: CardThemeData(
+          color: Colors.white.withAlpha(25),
+          elevation: 0,
+          margin: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: Colors.white.withAlpha(25)),
+          ),
+        ),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          centerTitle: false,
+        ),
         textTheme: GoogleFonts.interTextTheme(
           ThemeData.dark().textTheme.apply(
                 bodyColor: Colors.white,

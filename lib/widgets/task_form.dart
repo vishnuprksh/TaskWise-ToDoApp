@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/task.dart';
@@ -258,29 +259,35 @@ class _TaskFormState extends ConsumerState<TaskForm> {
 
   Widget _buildAttributeSelector(String label, String key) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white70)),
-          SegmentedButton<String>(
-            style: SegmentedButton.styleFrom(
-              selectedBackgroundColor: const Color(0xFF4F46E5).withOpacity(0.2),
-              selectedForegroundColor: Colors.white,
-              side: BorderSide(color: Colors.white.withOpacity(0.1)),
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-            ),
-            segments: const [
-              ButtonSegment(value: 'low', label: Text('Low', style: TextStyle(fontSize: 12))),
-              ButtonSegment(value: 'medium', label: Text('Med', style: TextStyle(fontSize: 12))),
-              ButtonSegment(value: 'high', label: Text('High', style: TextStyle(fontSize: 12))),
+          Text(label, style: TextStyle(color: Colors.white.withAlpha(150), fontSize: 14, fontWeight: FontWeight.w500)),
+          const SizedBox(width: 8),
+          ToggleButtons(
+            constraints: const BoxConstraints(minHeight: 32, minWidth: 60),
+            borderRadius: BorderRadius.circular(10),
+            selectedColor: Colors.white,
+            fillColor: const Color(0xFF6366F1).withAlpha(100),
+            color: Colors.white.withAlpha(100),
+            borderColor: Colors.white.withAlpha(20),
+            selectedBorderColor: const Color(0xFF6366F1),
+            isSelected: [
+              _attributes[key] == 'low',
+              _attributes[key] == 'medium',
+              _attributes[key] == 'high',
             ],
-            selected: {_attributes[key]!},
-            onSelectionChanged: (Set<String> newSelection) {
+            onPressed: (index) {
               setState(() {
-                _attributes[key] = newSelection.first;
+                _attributes[key] = index == 0 ? 'low' : (index == 1 ? 'medium' : 'high');
               });
             },
+            children: const [
+              Text('Low', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              Text('Med', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              Text('High', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            ],
           ),
         ],
       ),

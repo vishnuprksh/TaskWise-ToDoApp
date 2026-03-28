@@ -3,6 +3,7 @@
     "name": "TaskWise",
     "slug": "taskwise",
     "version": "4.4.3",
+    "scheme": "taskwise",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",

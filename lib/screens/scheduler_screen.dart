@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -84,36 +85,49 @@ class _SchedulerScreenState extends ConsumerState<SchedulerScreen> {
     final projectsAsync = ref.watch(projectsProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            _buildDateNavigation(),
-            Expanded(
-              child: tasksAsync.when(
-                data: (allTasks) {
-                  return projectsAsync.when(
-                    data: (projects) {
-                      final schedulerService = ref.watch(schedulerServiceProvider);
-                      final tasksForDay = schedulerService.getTasksForDate(_currentDate, allTasks);
-                      final projectMap = {for (var p in projects) p.id: p};
+      backgroundColor: Colors.transparent,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF0F172A),
+              Color(0xFF1E1B4B),
+              Color(0xFF0F172A),
+            ],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(),
+              _buildDateNavigation(),
+              Expanded(
+                child: tasksAsync.when(
+                  data: (allTasks) {
+                    return projectsAsync.when(
+                      data: (projects) {
+                        final schedulerService = ref.watch(schedulerServiceProvider);
+                        final tasksForDay = schedulerService.getTasksForDate(_currentDate, allTasks);
+                        final projectMap = {for (var p in projects) p.id: p};
 
-                      return _buildTimeline(tasksForDay, projectMap);
-                    },
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (err, _) => Center(
-                      child: Text('Error loading projects: $err', style: const TextStyle(color: Colors.red)),
-                    ),
-                  );
-                },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (err, _) => Center(
-                  child: Text('Error loading tasks: $err', style: const TextStyle(color: Colors.red)),
+                        return _buildTimeline(tasksForDay, projectMap);
+                      },
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (err, _) => Center(
+                        child: Text('Error loading projects: $err', style: const TextStyle(color: Colors.red)),
+                      ),
+                    );
+                  },
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (err, _) => Center(
+                    child: Text('Error loading tasks: $err', style: const TextStyle(color: Colors.red)),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -121,20 +135,44 @@ class _SchedulerScreenState extends ConsumerState<SchedulerScreen> {
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Calendar', style: TextStyle(color: Colors.grey, fontSize: 16)),
-              Text('Schedule', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+              Text(
+                'Calendar', 
+                style: TextStyle(
+                  color: Color(0xFF6366F1), 
+                  fontSize: 14, 
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              Text(
+                'Schedule', 
+                style: TextStyle(
+                  color: Colors.white, 
+                  fontSize: 32, 
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: -0.5,
+                ),
+              ),
             ],
           ),
           IconButton(
             onPressed: () => Navigator.pop(context),
-            icon: const Icon(LucideIcons.x, color: Colors.white, size: 24),
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withAlpha(15),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withAlpha(20)),
+              ),
+              child: const Icon(LucideIcons.x, color: Colors.white, size: 24),
+            ),
           ),
         ],
       ),
@@ -146,37 +184,63 @@ class _SchedulerScreenState extends ConsumerState<SchedulerScreen> {
     final isToday = _isToday(_currentDate);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            onPressed: _previousDay,
-            icon: const Icon(LucideIcons.chevronLeft, color: Colors.white, size: 24),
-          ),
+          _buildNavButton(LucideIcons.chevronLeft, _previousDay),
+          const SizedBox(width: 12),
           Expanded(
             child: GestureDetector(
               onTap: _goToToday,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isToday ? Colors.indigo : const Color(0xFF1E293B),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Text(
-                    dateStr,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: isToday ? const Color(0xFF6366F1).withAlpha(40) : Colors.white.withAlpha(15),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isToday ? const Color(0xFF6366F1).withAlpha(100) : Colors.white.withAlpha(20),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        dateStr,
+                        style: TextStyle(
+                          color: isToday ? const Color(0xFF818CF8) : Colors.white, 
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-          IconButton(
-            onPressed: _nextDay,
-            icon: const Icon(LucideIcons.chevronRight, color: Colors.white, size: 24),
-          ),
+          const SizedBox(width: 12),
+          _buildNavButton(LucideIcons.chevronRight, _nextDay),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNavButton(IconData icon, VoidCallback onPressed) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.white.withAlpha(10),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withAlpha(15)),
+        ),
+        child: Icon(icon, color: Colors.white, size: 20),
       ),
     );
   }
@@ -270,7 +334,7 @@ class _SchedulerScreenState extends ConsumerState<SchedulerScreen> {
       );
 
       final project = projectMap[task.projectId];
-      final projectColor = project != null ? Color(int.parse('0xFF${project.color}')) : Colors.indigo;
+      final projectColor = project?.colorValue ?? const Color(0xFF6366F1);
 
       return Positioned(
         top: position['top'],
