@@ -13,22 +13,11 @@ class ProjectsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final projectsAsync = ref.watch(projectsProvider);
-    final tasksAsync = ref.watch(tasksProvider);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF0F172A),
-              Color(0xFF1E1B4B),
-              Color(0xFF0F172A),
-            ],
-          ),
-        ),
+        color: const Color(0xFF0F172A),
         child: SafeArea(
           child: Column(
             children: [
@@ -49,10 +38,10 @@ class ProjectsScreen extends ConsumerWidget {
                       onPressed: () => Navigator.pop(context),
                     ),
                     const Text(
-                      'Projects', 
+                      'Projects',
                       style: TextStyle(
-                        color: Colors.white, 
-                        fontSize: 28, 
+                        color: Colors.white,
+                        fontSize: 28,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.5,
                       ),
@@ -75,39 +64,45 @@ class ProjectsScreen extends ConsumerWidget {
               Expanded(
                 child: projectsAsync.when(
                   data: (projects) {
-                    return tasksAsync.when(
-                      data: (tasks) {
-                        return ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                          itemCount: projects.length,
-                          itemBuilder: (context, index) {
-                            final project = projects[index];
-                            final totalTime = tasks
-                                .where((t) => t.projectId == project.id)
-                                .fold(0, (sum, t) => sum + (t.timeSpent));
+                    return FutureBuilder(
+                      future: ref.watch(tasksProvider.future),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData) {
+                          final tasks = snapshot.data!;
+                          return ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                            itemCount: projects.length,
+                            itemBuilder: (context, index) {
+                              final project = projects[index];
+                              final totalTime = tasks
+                                  .where((t) => t.projectId == project.id)
+                                  .fold(0, (sum, t) => sum + (t.timeSpent));
 
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 16),
-                              child: ProjectItem(
-                                project: project,
-                                totalTime: totalTime,
-                                onEdit: () => _showProjectForm(context, project: project),
-                                onToggleArchive: () {
-                                  ref.read(firestoreServiceProvider).updateProject(project.id, {
-                                    'archived': !project.archived,
-                                  });
-                                },
-                                onDelete: () => _confirmDelete(context, ref, project.id),
-                              ),
-                            );
-                          },
-                        );
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 16),
+                                child: ProjectItem(
+                                  project: project,
+                                  totalTime: totalTime,
+                                  onEdit: () => _showProjectForm(context, project: project),
+                                  onToggleArchive: () {
+                                    ref.read(firestoreServiceProvider).updateProject(project.id, {
+                                      'archived': !project.archived,
+                                    });
+                                  },
+                                  onDelete: () => _confirmDelete(context, ref, project.id),
+                                ),
+                              );
+                            },
+                          );
+                        } else if (snapshot.hasError) {
+                          return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.white)));
+                        } else {
+                          return Center(child: CircularProgressIndicator());
+                        }
                       },
-                      loading: () => const Center(child: CircularProgressIndicator()),
-                      error: (err, _) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.white))),
                     );
                   },
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                  loading: () => Center(child: CircularProgressIndicator()),
                   error: (err, _) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.white))),
                 ),
               ),

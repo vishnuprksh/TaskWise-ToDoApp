@@ -1,0 +1,12 @@
+flutter_launcher_icons:
+  image_path: "assets/icon.png"
+  image_path_ios: "assets/icon.png"
+  image_path_android: "assets/icon.png"
+  
+  android: true
+  ios: true
+  web:
+    generate: true
+  
+  android_adaptive_round_icon: true
+  remove_alpha_ios: true

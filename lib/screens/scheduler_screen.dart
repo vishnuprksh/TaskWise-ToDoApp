@@ -28,7 +28,6 @@ class _SchedulerScreenState extends ConsumerState<SchedulerScreen> {
     _scrollController = ScrollController();
     _timeIndicatorStream = Stream.periodic(const Duration(minutes: 1));
     
-    // Scroll to current hour on init
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToCurrentHour();
     });
@@ -43,7 +42,7 @@ class _SchedulerScreenState extends ConsumerState<SchedulerScreen> {
   void _scrollToCurrentHour() {
     final now = DateTime.now();
     const pixelsPerHour = 80.0;
-    const headerHeight = 120.0; // Approximate header + date nav height
+    const headerHeight = 120.0;
     
     final offset = (now.hour * pixelsPerHour) + headerHeight - 100;
     if (_scrollController.hasClients) {
@@ -87,17 +86,7 @@ class _SchedulerScreenState extends ConsumerState<SchedulerScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF0F172A),
-              Color(0xFF1E1B4B),
-              Color(0xFF0F172A),
-            ],
-          ),
-        ),
+        color: const Color(0xFF0F172A),
         child: SafeArea(
           child: Column(
             children: [
@@ -106,21 +95,25 @@ class _SchedulerScreenState extends ConsumerState<SchedulerScreen> {
               Expanded(
                 child: tasksAsync.when(
                   data: (allTasks) {
-                    return projectsAsync.when(
-                      data: (projects) {
-                        final schedulerService = ref.watch(schedulerServiceProvider);
-                        final tasksForDay = schedulerService.getTasksForDate(_currentDate, allTasks);
-                        final projectMap = {for (var p in projects) p.id: p};
+                    return FutureBuilder(
+                      future: ref.watch(projectsProvider.future),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasData) {
+                          final projects = snapshot.data!;
+                          final schedulerService = ref.read(schedulerServiceProvider);
+                          final tasksForDay = schedulerService.getTasksForDate(_currentDate, allTasks);
+                          final projectMap = {for (var p in projects) p.id: p};
 
-                        return _buildTimeline(tasksForDay, projectMap);
+                          return _buildTimeline(tasksForDay, projectMap);
+                        } else if (snapshot.hasError) {
+                          return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+                        } else {
+                          return Center(child: CircularProgressIndicator());
+                        }
                       },
-                      loading: () => const Center(child: CircularProgressIndicator()),
-                      error: (err, _) => Center(
-                        child: Text('Error loading projects: $err', style: const TextStyle(color: Colors.red)),
-                      ),
                     );
                   },
-                  loading: () => const Center(child: CircularProgressIndicator()),
+                  loading: () => Center(child: CircularProgressIndicator()),
                   error: (err, _) => Center(
                     child: Text('Error loading tasks: $err', style: const TextStyle(color: Colors.red)),
                   ),
@@ -152,10 +145,10 @@ class _SchedulerScreenState extends ConsumerState<SchedulerScreen> {
                 ),
               ),
               Text(
-                'Schedule', 
+                'Schedule',
                 style: TextStyle(
                   color: Colors.white, 
-                  fontSize: 32, 
+                  fontSize: 28, 
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.5,
                 ),
@@ -163,16 +156,15 @@ class _SchedulerScreenState extends ConsumerState<SchedulerScreen> {
             ],
           ),
           IconButton(
-            onPressed: () => Navigator.pop(context),
             icon: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
                 color: Colors.white.withAlpha(15),
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withAlpha(20)),
               ),
-              child: const Icon(LucideIcons.x, color: Colors.white, size: 24),
+              child: const Icon(LucideIcons.calendarDays, color: Colors.white, size: 20),
             ),
+            onPressed: _goToToday,
           ),
         ],
       ),
@@ -180,207 +172,103 @@ class _SchedulerScreenState extends ConsumerState<SchedulerScreen> {
   }
 
   Widget _buildDateNavigation() {
-    final dateStr = DateFormat('EEE, MMM d').format(_currentDate);
-    final isToday = _isToday(_currentDate);
-
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildNavButton(LucideIcons.chevronLeft, _previousDay),
-          const SizedBox(width: 12),
-          Expanded(
-            child: GestureDetector(
-              onTap: _goToToday,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    decoration: BoxDecoration(
-                      color: isToday ? const Color(0xFF6366F1).withAlpha(40) : Colors.white.withAlpha(15),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isToday ? const Color(0xFF6366F1).withAlpha(100) : Colors.white.withAlpha(20),
-                        width: 1.5,
-                      ),
-                    ),
-                    child: Center(
-                      child: Text(
-                        dateStr,
-                        style: TextStyle(
-                          color: isToday ? const Color(0xFF818CF8) : Colors.white, 
-                          fontWeight: FontWeight.w800,
-                          fontSize: 16,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
+          IconButton(
+            icon: const Icon(LucideIcons.chevronLeft, color: Colors.white70),
+            onPressed: _previousDay,
           ),
-          const SizedBox(width: 12),
-          _buildNavButton(LucideIcons.chevronRight, _nextDay),
+          Column(
+            children: [
+              Text(
+                DateFormat('MMMM yyyy').format(_currentDate),
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+              Text(
+                _isToday(_currentDate) ? 'Today' : DateFormat('EEEE, d').format(_currentDate),
+                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          IconButton(
+            icon: const Icon(LucideIcons.chevronRight, color: Colors.white70),
+            onPressed: _nextDay,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildNavButton(IconData icon, VoidCallback onPressed) {
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white.withAlpha(10),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withAlpha(15)),
-        ),
-        child: Icon(icon, color: Colors.white, size: 20),
-      ),
-    );
-  }
-
-  Widget _buildTimeline(List<Task> tasksForDay, Map<String, Project> projectMap) {
-    if (tasksForDay.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: const [
-            Icon(LucideIcons.calendar, color: Colors.grey, size: 48),
-            SizedBox(height: 16),
-            Text('No tasks scheduled', style: TextStyle(color: Colors.grey, fontSize: 16)),
-            SizedBox(height: 8),
-            Text('Drag tasks here to schedule them', style: TextStyle(color: Colors.grey, fontSize: 14)),
-          ],
-        ),
-      );
-    }
-
-    return StreamBuilder<void>(
-      stream: _timeIndicatorStream,
-      builder: (context, snapshot) {
-        return SingleChildScrollView(
-          controller: _scrollController,
-          child: Stack(
-            children: [
-              _buildGridLines(),
-              Column(
-                children: [
-                  ...List.generate(24, (hour) {
-                    return _buildHourRow(hour);
-                  }),
-                  const SizedBox(height: 40),
-                ],
-              ),
-              ..._buildEventItems(tasksForDay, projectMap),
-              if (_isToday(_currentDate)) _buildTimeIndicator(),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildGridLines() {
-    return Column(
-      children: List.generate(24, (hour) {
+  Widget _buildTimeline(List<Task> tasks, Map<String, Project> projectMap) {
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.only(top: 20, bottom: 100),
+      itemCount: 24,
+      itemBuilder: (context, hour) {
+        final hourTasks = tasks.where((t) => t.scheduledAt != null && t.scheduledAt!.hour == hour).toList();
+        
         return Container(
           height: 80,
           decoration: BoxDecoration(
             border: Border(
-              bottom: BorderSide(color: const Color(0xFF1E293B), width: 1),
+              top: BorderSide(color: Colors.white.withAlpha(10), width: 0.5),
             ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 60,
+                padding: const EdgeInsets.only(top: 8, left: 16),
+                child: Text(
+                  DateFormat('ha').format(DateTime(2024, 1, 1, hour)),
+                  style: TextStyle(color: Colors.white.withAlpha(100), fontSize: 12),
+                ),
+              ),
+              Expanded(
+                child: Stack(
+                  children: [
+                    if (_isToday(_currentDate) && DateTime.now().hour == hour)
+                      StreamBuilder(
+                        stream: _timeIndicatorStream,
+                        builder: (context, snapshot) {
+                          final now = DateTime.now();
+                          final topOffset = (now.minute / 60) * 80;
+                          return Positioned(
+                            top: topOffset,
+                            left: 0,
+                            right: 0,
+                            child: Row(
+                              children: [
+                                Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0xFF6366F1), shape: BoxShape.circle)),
+                                Expanded(child: Container(height: 2, color: const Color(0xFF6366F1))),
+                              ],
+                            ),
+                          );
+                        }
+                      ),
+                    ...hourTasks.map((task) {
+                      final project = projectMap[task.projectId];
+                      return SchedulerEventItem(
+                        task: task, 
+                        projectColor: project?.colorValue ?? Colors.blue,
+                        onUpdate: (newTime, newDuration) {
+                           ref.read(firestoreServiceProvider).updateTask(task.id, {
+                             'scheduledAt': newTime,
+                             'scheduledDuration': newDuration,
+                           });
+                        },
+                      );
+                    }).toList(),
+                  ],
+                ),
+              ),
+            ],
           ),
         );
-      }),
-    );
-  }
-
-  Widget _buildHourRow(int hour) {
-    return Container(
-      height: 80,
-      padding: const EdgeInsets.only(left: 50, right: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 45,
-            child: Text(
-              '${hour.toString().padLeft(2, '0')}:00',
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
-              textAlign: TextAlign.right,
-            ),
-          ),
-          Expanded(child: Container()),
-        ],
-      ),
-    );
-  }
-
-  List<Widget> _buildEventItems(List<Task> tasksForDay, Map<String, Project> projectMap) {
-    final schedulerService = ref.watch(schedulerServiceProvider);
-    const leftPadding = 95.0;
-    const rightPadding = 16.0;
-
-    return tasksForDay.map((task) {
-      final position = schedulerService.calculateEventPosition(
-        task.scheduledAt!,
-        task.scheduledDuration ?? 60,
-      );
-
-      final project = projectMap[task.projectId];
-      final projectColor = project?.colorValue ?? const Color(0xFF6366F1);
-
-      return Positioned(
-        top: position['top'],
-        left: leftPadding,
-        right: rightPadding,
-        height: position['height'],
-        child: SchedulerEventItem(
-          task: task,
-          projectColor: projectColor,
-          onUpdate: (newDateTime, newDuration) async {
-            final schedulerService = ref.read(schedulerServiceProvider);
-            final timeOfDay = TimeOfDay(hour: newDateTime.hour, minute: newDateTime.minute);
-            
-            try {
-              await schedulerService.updateTaskSchedule(
-                task.id,
-                _currentDate,
-                timeOfDay,
-                newDuration,
-              );
-            } catch (e) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error updating task: $e')),
-              );
-            }
-          },
-        ),
-      );
-    }).toList();
-  }
-
-  Widget _buildTimeIndicator() {
-    final now = DateTime.now();
-    const pixelsPerHour = 80.0;
-    const pixelsPerMinute = pixelsPerHour / 60;
-
-    final topOffset = (now.hour * pixelsPerHour) + (now.minute * pixelsPerMinute);
-
-    return Positioned(
-      top: topOffset,
-      left: 0,
-      right: 0,
-      child: Container(
-        height: 2,
-        color: Colors.red,
-      ),
+      },
     );
   }
 }

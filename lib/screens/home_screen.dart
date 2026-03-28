@@ -7,7 +7,6 @@ import '../models/project.dart';
 import '../services/firestore_service.dart';
 import '../widgets/task_item.dart';
 import '../widgets/task_form.dart';
-import '../widgets/voice_assistant.dart';
 import 'projects_screen.dart';
 import 'scheduler_screen.dart';
 
@@ -47,17 +46,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF0F172A),
-              Color(0xFF1E1B4B),
-              Color(0xFF0F172A),
-            ],
-          ),
-        ),
+        color: const Color(0xFF0F172A),
         child: SafeArea(
           child: Stack(
             children: [
@@ -151,17 +140,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   ),
                                 ),
                               ),
-                            const SizedBox(height: 100), // Space for VoiceAssistant
+                            const SizedBox(height: 80),
                           ],
                         );
                       },
-                      loading: () => const Center(child: CircularProgressIndicator()),
+                      loading: () => Center(child: CircularProgressIndicator()),
                       error: (err, _) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.white))),
                     ),
                   ),
                 ],
               ),
-              const VoiceAssistant(),
             ],
           ),
         ),

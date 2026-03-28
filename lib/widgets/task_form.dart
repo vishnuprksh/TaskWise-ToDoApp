@@ -128,7 +128,7 @@ class _TaskFormState extends ConsumerState<TaskForm> {
                   ),
                 ),
                 validator: (value) => value == null || value.isEmpty ? 'Please enter task text' : null,
-                autofocus: true,
+                autofocus: false,
               ),
               const SizedBox(height: 20),
               projectsAsync.when(
