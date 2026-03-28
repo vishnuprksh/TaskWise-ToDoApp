@@ -8,6 +8,7 @@ class Task {
   final double priorityScore;
   final int timeSpent;
   final DateTime? scheduledAt;
+  final int? scheduledDuration; // Duration in minutes
   final DateTime? startDate;
   final DateTime? endDate;
   final Map<String, String> attributes;
@@ -20,6 +21,7 @@ class Task {
     this.priorityScore = 0.0,
     this.timeSpent = 0,
     this.scheduledAt,
+    this.scheduledDuration = 60, // Default 60 minutes
     this.startDate,
     this.endDate,
     required this.attributes,
@@ -35,6 +37,7 @@ class Task {
       priorityScore: (data['priorityScore'] ?? 0.0).toDouble(),
       timeSpent: data['timeSpent'] ?? 0,
       scheduledAt: _parseDateTime(data['scheduledAt']),
+      scheduledDuration: data['scheduledDuration'] ?? 60,
       startDate: _parseDateTime(data['startDate']),
       endDate: _parseDateTime(data['endDate']),
       attributes: Map<String, String>.from(data['attributes'] ?? {
@@ -61,6 +64,7 @@ class Task {
       'priorityScore': priorityScore,
       'timeSpent': timeSpent,
       'scheduledAt': scheduledAt != null ? Timestamp.fromDate(scheduledAt!) : null,
+      'scheduledDuration': scheduledDuration,
       'startDate': startDate != null ? Timestamp.fromDate(startDate!) : null,
       'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
       'attributes': attributes,
@@ -94,6 +98,7 @@ class Task {
     double? priorityScore,
     int? timeSpent,
     DateTime? scheduledAt,
+    int? scheduledDuration,
     DateTime? startDate,
     DateTime? endDate,
     Map<String, String>? attributes,
@@ -106,6 +111,7 @@ class Task {
       priorityScore: priorityScore ?? this.priorityScore,
       timeSpent: timeSpent ?? this.timeSpent,
       scheduledAt: scheduledAt ?? this.scheduledAt,
+      scheduledDuration: scheduledDuration ?? this.scheduledDuration,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       attributes: attributes ?? this.attributes,

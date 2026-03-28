@@ -8,6 +8,7 @@ import '../widgets/task_item.dart';
 import '../widgets/task_form.dart';
 import '../widgets/voice_assistant.dart';
 import 'projects_screen.dart';
+import 'scheduler_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -134,14 +135,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               Text('TaskWise', style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
             ],
           ),
-          IconButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const ProjectsScreen()),
-              );
-            },
-            icon: const Icon(LucideIcons.layoutGrid, color: Colors.white, size: 28),
+          Row(
+            children: [
+              IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const SchedulerScreen()),
+                  );
+                },
+                icon: const Icon(LucideIcons.calendar, color: Colors.white, size: 28),
+              ),
+              IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const ProjectsScreen()),
+                  );
+                },
+                icon: const Icon(LucideIcons.layoutGrid, color: Colors.white, size: 28),
+              ),
+            ],
           ),
         ],
       ),
