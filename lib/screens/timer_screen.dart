@@ -59,6 +59,8 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
 
   Future<void> _initAudio() async {
     await _rainPlayer.setReleaseMode(ReleaseMode.loop);
+    await _rainPlayer.setSource(AssetSource('sounds/rain.mp3'));
+    await _audioPlayer.setSource(AssetSource('sounds/bell.mp3'));
   }
 
   Future<void> _loadSettings() async {
@@ -82,7 +84,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
       _isActive = true;
     });
     WakelockPlus.enable();
-    _rainPlayer.play(AssetSource('sounds/rain.mp3'));
+    _rainPlayer.resume();
     
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_timeLeft > 0) {
@@ -112,7 +114,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
 
   void _onTimerFinished() {
     _stopTimer();
-    _audioPlayer.play(AssetSource('sounds/bell.mp3'));
+    _audioPlayer.resume();
     
     showDialog(
       context: context,
