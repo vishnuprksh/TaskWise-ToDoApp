@@ -52,8 +52,12 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
       duration: const Duration(seconds: 2),
     )..repeat(reverse: true);
 
-    _loadSettings();
-    _initAudio();
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    await _loadSettings();
+    await _initAudio();
     _startTimer(); // Auto-start as per React implementation
   }
 
