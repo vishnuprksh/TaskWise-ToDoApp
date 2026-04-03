@@ -58,7 +58,9 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
   Future<void> _initializeApp() async {
     await _loadSettings();
     await _initAudio();
-    _startTimer(); // Auto-start as per React implementation
+    if (mounted) {
+      _startTimer();
+    }
   }
 
   Future<void> _initAudio() async {
@@ -272,187 +274,229 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
   Widget build(BuildContext context) {
     final color = const Color(0xFF6366F1);
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(LucideIcons.arrowLeft, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1E293B),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: const Text(
-            'Pomodoro',
-            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(LucideIcons.settings, color: Colors.white),
-            onPressed: () {
-              _showSettingsModal();
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        _showExitConfirmation();
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0F172A),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(LucideIcons.arrowLeft, color: Colors.white),
+            onPressed: () async {
+              _showExitConfirmation();
             },
           ),
-        ],
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              _currentMode == TimerMode.work ? 'Current Task' : 'Take a Break',
-              style: const TextStyle(
-                color: Color(0xFF94A3B8),
-                fontSize: 14,
-                letterSpacing: 1,
-              ),
+          title: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E293B),
+              borderRadius: BorderRadius.circular(20),
             ),
-            const SizedBox(height: 8),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 40),
-              child: Text(
-                widget.task.text,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+            child: const Text(
+              'Pomodoro',
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
             ),
-            if (_currentMode == TimerMode.work) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(LucideIcons.clock, size: 16, color: Color(0xFF94A3B8)),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Total Focus: ${TimeUtils.formatTime(widget.task.timeSpent ?? 0)}',
-                      style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 40),
-            GestureDetector(
-              onVerticalDragUpdate: (details) {
-                if (_isActive) return;
-                setState(() {
-                  _dragDistance += details.primaryDelta!;
-                  if (_dragDistance.abs() > 20) {
-                    int change = -(_dragDistance ~/ 20);
-                    int newDuration = (_durations[TimerMode.work]! + change).clamp(1, 120);
-                    _durations[TimerMode.work] = newDuration;
-                    _timeLeft = newDuration * 60;
-                    _dragDistance = 0;
-                  }
-                });
+          ),
+          actions: [
+            IconButton(
+              icon: const Icon(LucideIcons.settings, color: Colors.white),
+              onPressed: () {
+                _showSettingsModal();
               },
-              onVerticalDragEnd: (details) {
-                _dragDistance = 0;
-                _saveSettings();
-              },
-              child: ScaleTransition(
-                scale: Tween<double>(begin: 1.0, end: 1.05).animate(
-                  CurvedAnimation(parent: _breathingController, curve: Curves.easeInOut),
-                ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    SizedBox(
-                      width: 280,
-                      height: 280,
-                      child: CircularProgressIndicator(
-                        value: _durations[_currentMode] == 0 ? 0 : _timeLeft / (_durations[_currentMode]! * 60),
-                        strokeWidth: 12,
-                        backgroundColor: const Color(0xFF1E293B),
-                        valueColor: AlwaysStoppedAnimation<Color>(color),
-                      ),
-                    ),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _formatTime(_timeLeft),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 56,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          _isActive ? 'FOCUS' : 'PAUSED',
-                          style: TextStyle(
-                            color: color,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 60),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                GestureDetector(
-                  onTap: _toggleTimer,
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: color.withOpacity(0.4),
-                          blurRadius: 16,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      _isActive ? LucideIcons.pause : LucideIcons.play,
-                      size: 32,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 30),
-                GestureDetector(
-                  onTap: _resetTimer,
-                  child: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF1E293B),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(LucideIcons.rotateCcw, size: 24, color: Color(0xFF94A3B8)),
-                  ),
-                ),
-              ],
             ),
           ],
         ),
+        body: Column(
+          children: [
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _currentMode == TimerMode.work ? 'Current Task' : 'Take a Break',
+                      style: const TextStyle(
+                        color: Color(0xFF94A3B8),
+                        fontSize: 14,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 40),
+                      child: Text(
+                        widget.task.text,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    if (_currentMode == TimerMode.work) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E293B),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(LucideIcons.clock, size: 16, color: Color(0xFF94A3B8)),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Total Focus: ${TimeUtils.formatTime(widget.task.timeSpent ?? 0)}',
+                              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 40),
+                    GestureDetector(
+                      onVerticalDragUpdate: (details) {
+                        if (_isActive) return;
+                        setState(() {
+                          _dragDistance += details.primaryDelta!;
+                          if (_dragDistance.abs() > 20) {
+                            int change = -(_dragDistance ~/ 20);
+                            int newDuration = (_durations[TimerMode.work]! + change).clamp(1, 120);
+                            _durations[TimerMode.work] = newDuration;
+                            _timeLeft = newDuration * 60;
+                            _dragDistance = 0;
+                          }
+                        });
+                      },
+                      onVerticalDragEnd: (details) {
+                        _dragDistance = 0;
+                        _saveSettings();
+                      },
+                      child: ScaleTransition(
+                        scale: Tween<double>(begin: 1.0, end: 1.05).animate(
+                          CurvedAnimation(parent: _breathingController, curve: Curves.easeInOut),
+                        ),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            SizedBox(
+                              width: 280,
+                              height: 280,
+                              child: CircularProgressIndicator(
+                                value: _durations[_currentMode] == 0 ? 0 : _timeLeft / (_durations[_currentMode]! * 60),
+                                strokeWidth: 12,
+                                backgroundColor: const Color(0xFF1E293B),
+                                valueColor: AlwaysStoppedAnimation<Color>(color),
+                              ),
+                            ),
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _formatTime(_timeLeft),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 56,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  _isActive ? 'FOCUS' : 'PAUSED',
+                                  style: TextStyle(
+                                    color: color,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 2,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 60),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        GestureDetector(
+                          onTap: _toggleTimer,
+                          child: Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: color.withOpacity(0.4),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: Icon(
+                              _isActive ? LucideIcons.pause : LucideIcons.play,
+                              size: 32,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 30),
+                        GestureDetector(
+                          onTap: _resetTimer,
+                          child: Container(
+                            width: 50,
+                            height: 50,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF1E293B),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(LucideIcons.rotateCcw, size: 24, color: Color(0xFF94A3B8)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showExitConfirmation() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Text('Wait! Don\'t leave!', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Your Pomodoro is still running. If you leave now, you\'ll lose your momentum! Are you sure you want to stop?',
+          style: TextStyle(color: Color(0xFF94A3B8)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Stay Focused', style: TextStyle(color: Color(0xFF6366F1))),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              Navigator.pop(context); // Exit screen
+            },
+            child: const Text('Exit Anyway', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
       ),
     );
   }
