@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import '../models/task.dart';
 import 'package:intl/intl.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 class SchedulerEventItem extends StatefulWidget {
   final Task task;
   final Color projectColor;
-  final Function(DateTime, int) onUpdate;
+  final Function(DateTime?, int) onUpdate;
 
   const SchedulerEventItem({
     super.key,
@@ -19,103 +20,159 @@ class SchedulerEventItem extends StatefulWidget {
 }
 
 class _SchedulerEventItemState extends State<SchedulerEventItem> {
-  late Offset _dragStart;
-  late Offset _dragCurrent;
+  // Use local state for visual feedback during drag
+  double? _draggedTop;
+  double? _draggedHeight;
+  bool _isMoving = false;
+  bool _isResizing = false;
 
   static const double _pixelsPerHour = 80.0;
-
   double get _pixelsPerMinute => _pixelsPerHour / 60;
-
-  void _onPanDown(DragDownDetails details) {
-    _dragStart = details.globalPosition;
-    _dragCurrent = details.globalPosition;
-  }
-
-  void _onPanUpdate(DragUpdateDetails details) {
-    setState(() {
-      _dragCurrent = details.globalPosition;
-    });
-  }
-
-  void _onPanEnd(DragEndDetails details) {
-    // Calculate the delta in minutes
-    final dy = _dragCurrent.dy - _dragStart.dy;
-    final minutesDelta = (dy / _pixelsPerMinute).round();
-
-    // Snap to 15-minute intervals
-    final snappedMinutes = ((minutesDelta + 7) ~/ 15) * 15;
-
-    // Calculate new time
-    final newDateTime = widget.task.scheduledAt!.add(Duration(minutes: snappedMinutes));
-
-    // Ensure time stays within valid bounds (00:00 - 23:59)
-    if (newDateTime.hour >= 0 && newDateTime.hour < 24) {
-      widget.onUpdate(newDateTime, widget.task.scheduledDuration ?? 60);
-    } else {
-      // Out of bounds, don't update
-      setState(() {
-        _dragCurrent = _dragStart;
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    final timeStr = DateFormat('HH:mm').format(widget.task.scheduledAt!);
-    final durationStr = _formatDuration(widget.task.scheduledDuration ?? 60);
+    final scheduledAt = widget.task.scheduledAt!;
+    final duration = widget.task.scheduledDuration ?? 60;
 
-    return GestureDetector(
-      onPanDown: _onPanDown,
-      onPanUpdate: _onPanUpdate,
-      onPanEnd: _onPanEnd,
+    // Calculate initial position
+    final hour = scheduledAt.hour;
+    final minute = scheduledAt.minute;
+    final initialTop = (hour * _pixelsPerHour) + (minute * _pixelsPerMinute);
+    final initialHeight = duration * _pixelsPerMinute;
+
+    // Current effective position (either original or dragged)
+    final effectiveTop = _draggedTop ?? initialTop;
+    final effectiveHeight = _draggedHeight ?? initialHeight;
+
+    // Format strings for display
+    final displayedTime = _getTimeFromTop(effectiveTop);
+    final displayedDuration = (effectiveHeight / _pixelsPerMinute).round();
+
+    return Transform.translate(
+      offset: Offset(0, effectiveTop - initialTop),
       child: Container(
+        height: effectiveHeight,
         decoration: BoxDecoration(
-          color: widget.projectColor.withValues(alpha: 0.9),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: widget.projectColor.withValues(alpha: 1.0), width: 2),
+          color: widget.projectColor.withAlpha(200),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: widget.projectColor,
+            width: (_isMoving || _isResizing) ? 2.5 : 1.5,
+          ),
           boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
+            if (_isMoving || _isResizing)
+              BoxShadow(
+                color: Colors.black.withAlpha(100),
+                blurRadius: 12,
+                spreadRadius: 2,
+                offset: const Offset(0, 4),
+              ),
           ],
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
+          clipBehavior: Clip.none,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Expanded(
-                  child: Text(
-                    widget.task.text,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
+            // Main Body (Drag to Move)
+            GestureDetector(
+              onVerticalDragStart: (_) => setState(() {
+                _isMoving = true;
+                _draggedTop = initialTop;
+                _draggedHeight = initialHeight;
+              }),
+              onVerticalDragUpdate: (details) {
+                setState(() {
+                  _draggedTop = (_draggedTop! + details.delta.dy).clamp(0, 24 * _pixelsPerHour - effectiveHeight);
+                });
+              },
+              onVerticalDragEnd: (_) => _handleMoveEnd(),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(12, 10, 36, 10),
+                color: Colors.transparent, // Ensure full area is draggable
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.task.text,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(LucideIcons.clock, size: 12, color: Colors.white.withAlpha(180)),
+                        const SizedBox(width: 4),
+                        Text(
+                          "${DateFormat('HH:mm').format(displayedTime)} • ${_formatDuration(displayedDuration)}",
+                          style: TextStyle(
+                            color: Colors.white.withAlpha(200),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Delete Button (Top Right)
+            Positioned(
+              top: 4,
+              right: 4,
+              child: GestureDetector(
+                onTap: () => widget.onUpdate(null, duration),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withAlpha(30),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(LucideIcons.x, color: Colors.white70, size: 16),
+                ),
+              ),
+            ),
+
+            // Resize Handle (Bottom)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 12,
+              child: GestureDetector(
+                onVerticalDragStart: (_) => setState(() {
+                  _isResizing = true;
+                  _draggedHeight = initialHeight;
+                  _draggedTop = initialTop;
+                }),
+                onVerticalDragUpdate: (details) {
+                  setState(() {
+                    _draggedHeight = (_draggedHeight! + details.delta.dy).clamp(15 * _pixelsPerMinute, 800.0);
+                  });
+                },
+                onVerticalDragEnd: (_) => _handleResizeEnd(),
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.resizeUpDown,
+                  child: Container(
+                    color: Colors.transparent,
+                    child: Center(
+                      child: Container(
+                        width: 30,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withAlpha(100),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '$timeStr • $durationStr',
-                  style: const TextStyle(
-                    color: Colors.white70,
-                    fontSize: 11,
-                  ),
-                ),
-                const Icon(Icons.drag_indicator, color: Colors.white60, size: 14),
-              ],
+              ),
             ),
           ],
         ),
@@ -123,15 +180,59 @@ class _SchedulerEventItemState extends State<SchedulerEventItem> {
     );
   }
 
+  void _handleMoveEnd() {
+    if (_draggedTop == null) return;
+
+    // Snap to 15 minutes
+    final minutes = (_draggedTop! / _pixelsPerMinute).round();
+    final snappedMinutes = ((minutes + 7) ~/ 15) * 15;
+    
+    final newTime = DateTime(
+      widget.task.scheduledAt!.year,
+      widget.task.scheduledAt!.month,
+      widget.task.scheduledAt!.day,
+      snappedMinutes ~/ 60,
+      snappedMinutes % 60,
+    );
+
+    setState(() {
+      _isMoving = false;
+      _draggedTop = null;
+    });
+
+    widget.onUpdate(newTime, widget.task.scheduledDuration ?? 60);
+  }
+
+  void _handleResizeEnd() {
+    if (_draggedHeight == null) return;
+
+    // Snap to 15 minutes
+    final durationMinutes = (_draggedHeight! / _pixelsPerMinute).round();
+    final snappedDuration = ((durationMinutes + 7) ~/ 15) * 15;
+
+    setState(() {
+      _isResizing = false;
+      _draggedHeight = null;
+    });
+
+    widget.onUpdate(widget.task.scheduledAt, snappedDuration);
+  }
+
+  DateTime _getTimeFromTop(double top) {
+    final totalMinutes = (top / _pixelsPerMinute).round();
+    return DateTime(
+      widget.task.scheduledAt!.year,
+      widget.task.scheduledAt!.month,
+      widget.task.scheduledAt!.day,
+      totalMinutes ~/ 60,
+      totalMinutes % 60,
+    );
+  }
+
   String _formatDuration(int minutes) {
-    if (minutes < 60) {
-      return '${minutes}m';
-    }
+    if (minutes < 60) return '${minutes}m';
     final hours = minutes ~/ 60;
     final mins = minutes % 60;
-    if (mins == 0) {
-      return '${hours}h';
-    }
-    return '${hours}h ${mins}m';
+    return mins == 0 ? '${hours}h' : '${hours}h ${mins}m';
   }
 }

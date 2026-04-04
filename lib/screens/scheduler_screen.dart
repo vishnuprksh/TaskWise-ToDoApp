@@ -203,72 +203,102 @@ class _SchedulerScreenState extends ConsumerState<SchedulerScreen> {
   }
 
   Widget _buildTimeline(List<Task> tasks, Map<String, Project> projectMap) {
-    return ListView.builder(
+    const pixelsPerHour = 80.0;
+    final schedulerService = ref.read(schedulerServiceProvider);
+
+    return SingleChildScrollView(
       controller: _scrollController,
       padding: const EdgeInsets.only(top: 20, bottom: 100),
-      itemCount: 24,
-      itemBuilder: (context, hour) {
-        final hourTasks = tasks.where((t) => t.scheduledAt != null && t.scheduledAt!.hour == hour).toList();
-        
-        return Container(
-          height: 80,
-          decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(color: Colors.white.withAlpha(10), width: 0.5),
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 60,
-                padding: const EdgeInsets.only(top: 8, left: 16),
-                child: Text(
-                  DateFormat('ha').format(DateTime(2024, 1, 1, hour)),
-                  style: TextStyle(color: Colors.white.withAlpha(100), fontSize: 12),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Hour Grid Background
+          Column(
+            children: List.generate(24, (hour) {
+              return Container(
+                height: pixelsPerHour,
+                decoration: BoxDecoration(
+                  border: Border(
+                    top: BorderSide(color: Colors.white.withAlpha(10), width: 0.5),
+                  ),
                 ),
-              ),
-              Expanded(
-                child: Stack(
+                child: Row(
                   children: [
-                    if (_isToday(_currentDate) && DateTime.now().hour == hour)
-                      StreamBuilder(
-                        stream: _timeIndicatorStream,
-                        builder: (context, snapshot) {
-                          final now = DateTime.now();
-                          final topOffset = (now.minute / 60) * 80;
-                          return Positioned(
-                            top: topOffset,
-                            left: 0,
-                            right: 0,
-                            child: Row(
-                              children: [
-                                Container(width: 8, height: 8, decoration: const BoxDecoration(color: Color(0xFF6366F1), shape: BoxShape.circle)),
-                                Expanded(child: Container(height: 2, color: const Color(0xFF6366F1))),
-                              ],
-                            ),
-                          );
-                        }
+                    Container(
+                      width: 60,
+                      padding: const EdgeInsets.only(top: 8, left: 16),
+                      child: Text(
+                        DateFormat('ha').format(DateTime(2024, 1, 1, hour)),
+                        style: TextStyle(color: Colors.white.withAlpha(100), fontSize: 12),
                       ),
-                    ...hourTasks.map((task) {
-                      final project = projectMap[task.projectId];
-                      return SchedulerEventItem(
-                        task: task, 
-                        projectColor: project?.colorValue ?? Colors.blue,
-                        onUpdate: (newTime, newDuration) {
-                           ref.read(firestoreServiceProvider).updateTask(task.id, {
-                             'scheduledAt': newTime,
-                             'scheduledDuration': newDuration,
-                           });
-                        },
-                      );
-                    }).toList(),
+                    ),
+                    Expanded(child: Container()),
                   ],
                 ),
-              ),
-            ],
+              );
+            }),
           ),
-        );
-      },
+
+          // Current Time Indicator
+          if (_isToday(_currentDate))
+            StreamBuilder(
+              stream: _timeIndicatorStream,
+              builder: (context, snapshot) {
+                final now = DateTime.now();
+                final topOffset = (now.hour * pixelsPerHour) + (now.minute / 60) * pixelsPerHour;
+                return Positioned(
+                  top: topOffset,
+                  left: 60,
+                  right: 0,
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(color: Color(0xFF6366F1), shape: BoxShape.circle),
+                      ),
+                      Expanded(
+                        child: Container(height: 2, color: const Color(0xFF6366F1)),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+
+          // Events Overlay
+          ...tasks.map((task) {
+            final project = projectMap[task.projectId];
+            final position = schedulerService.calculateEventPosition(
+              task.scheduledAt!,
+              task.scheduledDuration ?? 60,
+            );
+
+            return Positioned(
+              top: position['top'],
+              left: 70,
+              right: 16,
+              height: position['height'],
+              child: SchedulerEventItem(
+                task: task,
+                projectColor: project?.colorValue ?? Colors.blue,
+                onUpdate: (newTime, newDuration) {
+                  if (newTime == null) {
+                    ref.read(firestoreServiceProvider).updateTask(task.id, {
+                      'scheduledAt': null,
+                    });
+                  } else {
+                    ref.read(firestoreServiceProvider).updateTask(task.id, {
+                      'scheduledAt': newTime,
+                      'scheduledDuration': newDuration,
+                    });
+                  }
+                },
+              ),
+            );
+          }).toList(),
+        ],
+      ),
     );
   }
 }
