@@ -23,11 +23,17 @@ class _SchedulerEventItemState extends State<SchedulerEventItem> {
   // Use local state for visual feedback during drag
   double? _draggedTop;
   double? _draggedHeight;
+  
+  // Track raw cumulative drag to avoid "stickiness" when snapping
+  double _rawDragTop = 0;
+  double _rawDragHeight = 0;
+  
   bool _isMoving = false;
   bool _isResizing = false;
 
   static const double _pixelsPerHour = 80.0;
   double get _pixelsPerMinute => _pixelsPerHour / 60;
+  double get _snapPixels => 15 * _pixelsPerMinute;
 
   @override
   Widget build(BuildContext context) {
@@ -76,12 +82,14 @@ class _SchedulerEventItemState extends State<SchedulerEventItem> {
             GestureDetector(
               onVerticalDragStart: (_) => setState(() {
                 _isMoving = true;
+                _rawDragTop = initialTop;
                 _draggedTop = initialTop;
                 _draggedHeight = initialHeight;
               }),
               onVerticalDragUpdate: (details) {
+                _rawDragTop = (_rawDragTop + details.delta.dy).clamp(0.0, 24 * _pixelsPerHour - effectiveHeight);
                 setState(() {
-                  _draggedTop = (_draggedTop! + details.delta.dy).clamp(0, 24 * _pixelsPerHour - effectiveHeight);
+                  _draggedTop = (_rawDragTop / _snapPixels).round() * _snapPixels;
                 });
               },
               onVerticalDragEnd: (_) => _handleMoveEnd(),
@@ -147,12 +155,14 @@ class _SchedulerEventItemState extends State<SchedulerEventItem> {
               child: GestureDetector(
                 onVerticalDragStart: (_) => setState(() {
                   _isResizing = true;
+                  _rawDragHeight = initialHeight;
                   _draggedHeight = initialHeight;
                   _draggedTop = initialTop;
                 }),
                 onVerticalDragUpdate: (details) {
+                  _rawDragHeight = (_rawDragHeight + details.delta.dy).clamp(15 * _pixelsPerMinute, 24 * _pixelsPerHour);
                   setState(() {
-                    _draggedHeight = (_draggedHeight! + details.delta.dy).clamp(15 * _pixelsPerMinute, 800.0);
+                    _draggedHeight = (_rawDragHeight / _snapPixels).round() * _snapPixels;
                   });
                 },
                 onVerticalDragEnd: (_) => _handleResizeEnd(),
@@ -183,16 +193,14 @@ class _SchedulerEventItemState extends State<SchedulerEventItem> {
   void _handleMoveEnd() {
     if (_draggedTop == null) return;
 
-    // Snap to 15 minutes
-    final minutes = (_draggedTop! / _pixelsPerMinute).round();
-    final snappedMinutes = ((minutes + 7) ~/ 15) * 15;
+    final totalMinutes = (_draggedTop! / _pixelsPerMinute).round();
     
     final newTime = DateTime(
       widget.task.scheduledAt!.year,
       widget.task.scheduledAt!.month,
       widget.task.scheduledAt!.day,
-      snappedMinutes ~/ 60,
-      snappedMinutes % 60,
+      totalMinutes ~/ 60,
+      totalMinutes % 60,
     );
 
     setState(() {
@@ -206,16 +214,14 @@ class _SchedulerEventItemState extends State<SchedulerEventItem> {
   void _handleResizeEnd() {
     if (_draggedHeight == null) return;
 
-    // Snap to 15 minutes
     final durationMinutes = (_draggedHeight! / _pixelsPerMinute).round();
-    final snappedDuration = ((durationMinutes + 7) ~/ 15) * 15;
 
     setState(() {
       _isResizing = false;
       _draggedHeight = null;
     });
 
-    widget.onUpdate(widget.task.scheduledAt, snappedDuration);
+    widget.onUpdate(widget.task.scheduledAt, durationMinutes);
   }
 
   DateTime _getTimeFromTop(double top) {
