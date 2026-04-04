@@ -6,16 +6,20 @@ import '../screens/timer_screen.dart';
 
 class TaskItem extends StatelessWidget {
   final Task task;
+  final String? projectName;
   final VoidCallback onToggle;
   final VoidCallback onDelete;
   final VoidCallback onTap;
+  final VoidCallback? onSchedule;
 
   const TaskItem({
     Key? key,
     required this.task,
+    this.projectName,
     required this.onToggle,
     required this.onDelete,
     required this.onTap,
+    this.onSchedule,
   }) : super(key: key);
 
   @override
@@ -24,8 +28,17 @@ class TaskItem extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Dismissible(
         key: Key(task.id),
-        direction: DismissDirection.endToStart,
+        direction: onSchedule != null ? DismissDirection.horizontal : DismissDirection.endToStart,
         background: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            color: Colors.indigo.withAlpha(200),
+            child: const Icon(LucideIcons.calendar, color: Colors.white),
+          ),
+        ),
+        secondaryBackground: ClipRRect(
           borderRadius: BorderRadius.circular(20),
           child: Container(
             alignment: Alignment.centerRight,
@@ -35,6 +48,11 @@ class TaskItem extends StatelessWidget {
           ),
         ),
         confirmDismiss: (direction) async {
+          if (direction == DismissDirection.startToEnd) {
+            if (onSchedule != null) onSchedule!();
+            return false;
+          }
+          
           return await showDialog(
             context: context,
             builder: (BuildContext context) {
@@ -63,7 +81,11 @@ class TaskItem extends StatelessWidget {
             },
           );
         },
-        onDismissed: (_) => onDelete(),
+        onDismissed: (direction) {
+          if (direction == DismissDirection.endToStart) {
+            onDelete();
+          }
+        },
         child: ClipRRect(
           borderRadius: BorderRadius.circular(20),
           child: BackdropFilter(
@@ -98,14 +120,32 @@ class TaskItem extends StatelessWidget {
                         : null,
                   ),
                 ),
-                title: Text(
-                  task.text,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: task.completed ? FontWeight.w400 : FontWeight.w600,
-                    decoration: task.completed ? TextDecoration.lineThrough : null,
-                    color: task.completed ? Colors.white.withAlpha(100) : Colors.white,
-                  ),
+                title: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (projectName != null && projectName!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          projectName!.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.indigoAccent.withAlpha(180),
+                            letterSpacing: 1.0,
+                          ),
+                        ),
+                      ),
+                    Text(
+                      task.text,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: task.completed ? FontWeight.w400 : FontWeight.w600,
+                        decoration: task.completed ? TextDecoration.lineThrough : null,
+                        color: task.completed ? Colors.white.withAlpha(100) : Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
                 subtitle: task.scheduledAt != null
                     ? Padding(
