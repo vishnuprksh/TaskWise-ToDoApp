@@ -26,7 +26,7 @@ class _SchedulerScreenState extends ConsumerState<SchedulerScreen> {
     super.initState();
     _currentDate = DateTime.now();
     _scrollController = ScrollController();
-    _timeIndicatorStream = Stream.periodic(const Duration(minutes: 1));
+    _timeIndicatorStream = Stream.periodic(const Duration(minutes: 1)).asBroadcastStream();
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scrollToCurrentHour();
