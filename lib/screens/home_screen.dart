@@ -54,14 +54,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       try {
         final task = tasks.firstWhere((t) => t.id == taskId);
         
-        if (uri.host == 'startPomodoro') {
+        if (uri.host.toLowerCase() == 'startpomodoro') {
           if (mounted) {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => TimerScreen(task: task)),
             );
           }
-        } else if (uri.host == 'openTask') {
+        } else if (uri.host.toLowerCase() == 'opentask') {
           _showTaskForm(task: task);
         }
       } catch (e) {

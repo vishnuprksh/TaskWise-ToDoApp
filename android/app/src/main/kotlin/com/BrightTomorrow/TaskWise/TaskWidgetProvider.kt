@@ -20,6 +20,7 @@ class TaskWidgetProvider : HomeWidgetProvider() {
         const val ACTION_NEXT_PROJECT = "com.BrightTomorrow.TaskWise.NEXT_PROJECT"
         const val ACTION_PREV_PROJECT = "com.BrightTomorrow.TaskWise.PREV_PROJECT"
         const val ACTION_START_POMODORO = "com.BrightTomorrow.TaskWise.START_POMODORO"
+        const val ACTION_WIDGET_CLICK = "com.BrightTomorrow.TaskWise.WIDGET_CLICK"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -65,6 +66,16 @@ class TaskWidgetProvider : HomeWidgetProvider() {
                 Uri.parse("homeWidget://startPomodoro?taskId=$taskId")
             )
             backgroundIntent.send()
+        } else if (intent.action == ACTION_WIDGET_CLICK) {
+            val uriString = intent.dataString ?: ""
+            Log.d("TaskWidget", "Widget clicked with URI: $uriString")
+            
+            val launchIntent = Intent(context, MainActivity::class.java).apply {
+                action = "es.antonborri.home_widget.action.LAUNCH"
+                data = Uri.parse(uriString)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            context.startActivity(launchIntent)
         }
         super.onReceive(context, intent)
     }
@@ -101,9 +112,20 @@ class TaskWidgetProvider : HomeWidgetProvider() {
                 setEmptyView(R.id.widget_tasks_list, R.id.widget_empty_view)
 
                 // Tasks Interaction Template
-                val clickPendingIntent = HomeWidgetLaunchIntent.getActivity(
+                val clickIntent = Intent(context, TaskWidgetProvider::class.java).apply { action = ACTION_WIDGET_CLICK }
+                
+                var flags = PendingIntent.FLAG_UPDATE_CURRENT
+                if (android.os.Build.VERSION.SDK_INT >= 31) {
+                    flags = flags or PendingIntent.FLAG_MUTABLE
+                } else {
+                    flags = flags or PendingIntent.FLAG_MUTABLE // For older APIs that require MUTABLE or don't care, it defaults to mutable without IMMUTABLE flag
+                }
+                
+                val clickPendingIntent = PendingIntent.getBroadcast(
                     context,
-                    MainActivity::class.java
+                    2,
+                    clickIntent,
+                    flags
                 )
                 setPendingIntentTemplate(R.id.widget_tasks_list, clickPendingIntent)
             }

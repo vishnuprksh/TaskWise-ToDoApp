@@ -12,6 +12,7 @@ import org.json.JSONObject
 class TaskWidgetFactory(private val context: Context, intent: Intent) : RemoteViewsService.RemoteViewsFactory {
 
     private var tasks: List<JSONObject> = listOf()
+    private var projects: JSONArray = JSONArray()
     private val widgetData: SharedPreferences = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
 
     override fun onCreate() {
@@ -24,13 +25,21 @@ class TaskWidgetFactory(private val context: Context, intent: Intent) : RemoteVi
 
     private fun updateData() {
         val tasksJson = widgetData.getString("tasks_json", "[]")
+        val projectsJson = widgetData.getString("projects_json", "[]")
         val selectedProjectId = widgetData.getString("selected_project_id", null)
         
+        projects = JSONArray(projectsJson)
         val allTasks = JSONArray(tasksJson)
         val filteredTasks = mutableListOf<JSONObject>()
         
         for (i in 0 until allTasks.length()) {
             val task = allTasks.getJSONObject(i)
+            
+            // Skip completed tasks
+            if (task.optBoolean("completed", false)) {
+                continue
+            }
+            
             // Filter by project if one is selected (unless it's 'all')
             if (selectedProjectId == null || selectedProjectId == "all" || task.optString("projectId") == selectedProjectId) {
                 filteredTasks.add(task)
@@ -54,11 +63,25 @@ class TaskWidgetFactory(private val context: Context, intent: Intent) : RemoteVi
         val views = RemoteViews(context.packageName, R.layout.widget_task_item)
         
         val text = task.optString("text", "")
-        val completed = task.optBoolean("completed", false)
         val taskId = task.optString("id", "")
+        val projectId = task.optString("projectId", "")
+        
+        var projectName = ""
+        for (i in 0 until projects.length()) {
+            val p = projects.getJSONObject(i)
+            if (p.optString("id") == projectId) {
+                projectName = p.optString("name", "")
+                break
+            }
+        }
 
         views.setTextViewText(R.id.widget_task_text, text)
-        views.setImageViewResource(R.id.widget_task_icon, if (completed) R.drawable.ic_check_circle else R.drawable.ic_circle)
+        if (projectName.isNotEmpty()) {
+            views.setTextViewText(R.id.widget_task_project, projectName)
+        } else {
+            views.setTextViewText(R.id.widget_task_project, "")
+        }
+        views.setImageViewResource(R.id.widget_task_icon, R.drawable.ic_circle)
 
         // Set Fill-in Intent for starting Pomodoro
         val fillInIntent = Intent().apply {
