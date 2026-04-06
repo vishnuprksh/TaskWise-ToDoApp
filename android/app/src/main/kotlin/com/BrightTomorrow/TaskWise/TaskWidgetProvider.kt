@@ -21,6 +21,7 @@ class TaskWidgetProvider : HomeWidgetProvider() {
         const val ACTION_PREV_PROJECT = "com.BrightTomorrow.TaskWise.PREV_PROJECT"
         const val ACTION_START_POMODORO = "com.BrightTomorrow.TaskWise.START_POMODORO"
         const val ACTION_WIDGET_CLICK = "com.BrightTomorrow.TaskWise.WIDGET_CLICK"
+        const val ACTION_REFRESH = "com.BrightTomorrow.TaskWise.REFRESH"
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -56,6 +57,10 @@ class TaskWidgetProvider : HomeWidgetProvider() {
                 // Update the provider (to refresh project name)
                 this.onUpdate(context, appWidgetManager, widgetIds, widgetData)
             }
+        } else if (intent.action == ACTION_REFRESH) {
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val widgetIds = appWidgetManager.getAppWidgetIds(intent.component ?: android.content.ComponentName(context, TaskWidgetProvider::class.java))
+            appWidgetManager.notifyAppWidgetViewDataChanged(widgetIds, R.id.widget_tasks_list)
         } else if (intent.action == ACTION_START_POMODORO) {
             val taskId = intent.getStringExtra("taskId") ?: ""
             Log.d("TaskWidget", "Starting Pomodoro for taskId: $taskId")
@@ -100,8 +105,10 @@ class TaskWidgetProvider : HomeWidgetProvider() {
                 // Setup Prev/Next Project Buttons
                 val nextIntent = Intent(context, TaskWidgetProvider::class.java).apply { action = ACTION_NEXT_PROJECT }
                 val prevIntent = Intent(context, TaskWidgetProvider::class.java).apply { action = ACTION_PREV_PROJECT }
+                val refreshIntent = Intent(context, TaskWidgetProvider::class.java).apply { action = ACTION_REFRESH }
                 setOnClickPendingIntent(R.id.widget_next_project, PendingIntent.getBroadcast(context, 0, nextIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
                 setOnClickPendingIntent(R.id.widget_prev_project, PendingIntent.getBroadcast(context, 1, prevIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+                setOnClickPendingIntent(R.id.widget_task_refresh, PendingIntent.getBroadcast(context, 3, refreshIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
 
                 // Setup ListView
                 val intent = Intent(context, TaskWidgetService::class.java).apply {

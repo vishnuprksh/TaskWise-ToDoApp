@@ -14,6 +14,24 @@ import java.util.*
 
 class ScheduleWidgetProvider : HomeWidgetProvider() {
 
+    companion object {
+        const val ACTION_REFRESH = "com.BrightTomorrow.TaskWise.SCHEDULE_REFRESH"
+    }
+
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == ACTION_REFRESH) {
+            Log.d("ScheduleWidget", "Manual refresh triggered")
+            val appWidgetManager = AppWidgetManager.getInstance(context)
+            val widgetIds = appWidgetManager.getAppWidgetIds(intent.component ?: android.content.ComponentName(context, ScheduleWidgetProvider::class.java))
+            appWidgetManager.notifyAppWidgetViewDataChanged(widgetIds, R.id.widget_schedule_list)
+            
+            // Also call onUpdate to refresh the date and re-bind intents
+            val prefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
+            onUpdate(context, appWidgetManager, widgetIds, prefs)
+        }
+        super.onReceive(context, intent)
+    }
+
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray, widgetData: SharedPreferences) {
         for (appWidgetId in appWidgetIds) {
             val views = RemoteViews(context.packageName, R.layout.schedule_widget_layout).apply {
@@ -21,6 +39,9 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
                 // Update Date
                 val sdf = SimpleDateFormat("EEE, MMM d", Locale.getDefault())
                 setTextViewText(R.id.widget_schedule_date, sdf.format(Date()))
+
+                val refreshIntent = Intent(context, ScheduleWidgetProvider::class.java).apply { action = ACTION_REFRESH }
+                setOnClickPendingIntent(R.id.widget_schedule_refresh, PendingIntent.getBroadcast(context, 0, refreshIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
 
                 // Setup ListView (Timeline)
                 val intent = Intent(context, ScheduleWidgetService::class.java).apply {

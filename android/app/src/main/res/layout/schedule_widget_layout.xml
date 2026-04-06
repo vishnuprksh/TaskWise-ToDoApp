@@ -31,6 +31,14 @@
             android:text="Today"
             android:textColor="#80FFFFFF"
             android:textSize="12sp" />
+
+        <ImageView
+            android:id="@+id/widget_schedule_refresh"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginStart="12dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_refresh" />
     </LinearLayout>
 
     <FrameLayout

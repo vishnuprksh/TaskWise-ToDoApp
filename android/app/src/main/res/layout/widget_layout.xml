@@ -45,6 +45,14 @@
                 android:layout_height="24dp"
                 android:background="?android:attr/selectableItemBackgroundBorderless"
                 android:src="@drawable/ic_chevron_right" />
+
+            <ImageView
+                android:id="@+id/widget_task_refresh"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_marginStart="16dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:src="@drawable/ic_refresh" />
         </LinearLayout>
 
         <!-- Tasks ListView -->
