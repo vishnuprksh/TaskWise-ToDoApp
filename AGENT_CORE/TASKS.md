@@ -1,8 +1,9 @@
 # Task Tracking
-- [x] **Current Focus:** Designing and implementing a home screen widget for tasks and Pomodoro.
-- [x] Research existing task and pomodoro implementation details.
-- [x] Add `home_widget` dependency to `pubspec.yaml`.
-- [x] Design the widget UI (Android/iOS Mockups).
-- [x] Implement data sharing between the app and the widget (Android side).
-- [x] Verify widget functionality on an emulator/device (User requested `flutter run`).
+- [/] **Current Focus:** Advanced Widget Expansion (Scrollable Tasks, Project Switcher, Pomodoro Integration)
+- [x] Implement Native Android `ListView` for scrollable tasks.
+- [x] Create `RemoteViewsFactory` for dynamic data population.
+- [x] Build Project Navigation (Next/Prev) UI in the widget header.
+- [x] Connect Pomodoro button click to Flutter background task.
+- [ ] Verify build and integration through `flutter run`.
+- [ ] Debug potential state synchronization issues between app and widget.
 **Blockers:** None.

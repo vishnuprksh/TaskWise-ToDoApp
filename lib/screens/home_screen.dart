@@ -9,6 +9,7 @@ import '../widgets/task_item.dart';
 import '../widgets/task_form.dart';
 import 'projects_screen.dart';
 import 'scheduler_screen.dart';
+import '../services/widget_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -40,6 +41,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final tasksAsync = ref.watch(tasksProvider);
     final projectsAsync = ref.watch(projectsProvider);
+
+    // Initialize widget sync listener
+    ref.watch(widgetSyncProvider);
 
     return Scaffold(
       backgroundColor: Colors.transparent,

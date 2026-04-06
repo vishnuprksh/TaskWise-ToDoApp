@@ -1,22 +1,50 @@
 import 'package:home_widget/home_widget.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/task.dart';
 import 'firestore_service.dart';
+import '../models/task.dart';
+import '../models/project.dart';
 import 'dart:convert';
+import 'package:flutter/widgets.dart';
+
+@pragma('vm:entry-point')
+Future<void> backgroundCallback(Uri? uri) async {
+  if (uri?.host.toLowerCase() == 'startpomodoro') {
+    final taskId = uri?.queryParameters['taskId'];
+    print('WidgetService Background: Starting Pomodoro for $taskId');
+    // Here we would ideally trigger the app's timer logic.
+    // For now, let's save the 'active_task_id' to shared prefs so the app picks it up on launch.
+    await HomeWidget.saveWidgetData<String>('auto_start_task_id', taskId);
+  }
+}
 
 class WidgetService {
   static const String _groupId = 'group.com.BrightTomorrow.TaskWise'; // For iOS
   static const String _androidWidgetName = 'TaskWidgetProvider';
 
   static Future<void> updateTasks(List<Task> tasks) async {
-    final topTasks = tasks.take(3).map((t) => {
+    final allTasks = tasks.map((t) => {
       'id': t.id,
       'text': t.text,
       'completed': t.completed,
       'priority': t.attributes['importance'] ?? 'medium',
+      'projectId': t.projectId,
     }).toList();
 
-    await HomeWidget.saveWidgetData<String>('tasks_json', jsonEncode(topTasks));
+    final jsonString = jsonEncode(allTasks);
+    await HomeWidget.saveWidgetData<String>('tasks_json', jsonString);
+    await _updateWidget();
+  }
+
+  static Future<void> updateProjects(List<dynamic> projects) async {
+    final projectData = projects.map((p) => {
+      'id': p.id,
+      'name': p.name,
+    }).toList();
+    
+    // Add "All Tasks" option
+    projectData.insert(0, {'id': 'all', 'name': 'All Tasks'});
+
+    await HomeWidget.saveWidgetData<String>('projects_json', jsonEncode(projectData));
     await _updateWidget();
   }
 
@@ -38,12 +66,25 @@ class WidgetService {
       iOSName: 'TaskWidget',
     );
   }
-
-  static void initializeTaskListener(WidgetRef ref) {
-    ref.listen<AsyncValue<List<Task>>>(tasksProvider, (previous, next) {
-      if (next is AsyncData<List<Task>>) {
-        updateTasks(next.value);
-      }
-    });
-  }
 }
+
+final widgetSyncProvider = Provider((ref) {
+  // Register background callback once
+  HomeWidget.registerBackgroundCallback(backgroundCallback);
+
+  // Sync tasks
+  ref.listen<AsyncValue<List<Task>>>(tasksProvider, (previous, next) {
+    if (next is AsyncData<List<Task>>) {
+      WidgetService.updateTasks(next.value);
+    }
+  });
+
+  // Sync projects
+  ref.listen<AsyncValue<List<Project>>>(projectsProvider, (previous, next) {
+    if (next is AsyncData<List<Project>>) {
+      WidgetService.updateProjects(next.value);
+    }
+  });
+
+  return null;
+});
