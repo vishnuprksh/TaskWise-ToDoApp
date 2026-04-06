@@ -7,6 +7,7 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/task.dart';
 import '../services/firestore_service.dart';
+import '../services/widget_service.dart';
 import '../utils/time_utils.dart';
 
 enum TimerMode { work }
@@ -102,6 +103,12 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
               _updateTimeSpent(1);
             }
           }
+          // Update Home Widget
+          WidgetService.updateTimer(
+            timeLeft: _timeLeft,
+            isActive: _isActive,
+            taskText: widget.task.text,
+          );
         });
       } else {
         _onTimerFinished();
@@ -115,6 +122,12 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
     setState(() {
       _isActive = false;
     });
+    // Update Home Widget
+    WidgetService.updateTimer(
+      timeLeft: _timeLeft,
+      isActive: false,
+      taskText: widget.task.text,
+    );
     WakelockPlus.disable();
   }
 
