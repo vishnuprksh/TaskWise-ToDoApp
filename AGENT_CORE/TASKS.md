@@ -1,7 +1,8 @@
 # Task Tracking
-- [ ] **Current Focus:** Widget Simplification & Pomodoro Deep-Linking
-- [x] Update `TaskWidgetProvider.kt` to remove timer logic and set activity template.
-- [x] Update `TaskWidgetFactory.kt` to include task IDs in fill-in intents.
-- [x] Handle `startPomodoro` deep-link in `HomeScreen.dart`.
-- [x] Verify deep-link to `TimerScreen` on device.
+- [x] **Current Focus:** Schedule Widget Implementation
+- [x] Implement `updateSchedule` in `WidgetService.dart`.
+- [x] Create `ScheduleWidgetProvider.kt` and `ScheduleWidgetFactory.kt`.
+- [x] Design `schedule_widget_layout.xml` and `widget_schedule_item.xml`.
+- [x] Register new widget in `AndroidManifest.xml`.
+- [x] Research centering logic (Sliding Window Approach).
 **Blockers:** None.

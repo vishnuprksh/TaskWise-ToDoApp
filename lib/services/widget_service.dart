@@ -20,7 +20,8 @@ Future<void> backgroundCallback(Uri? uri) async {
 class WidgetService {
   static const String _groupId = 'group.com.BrightTomorrow.TaskWise'; // For iOS
   static const String _androidWidgetName = 'TaskWidgetProvider';
-
+  static const String _scheduleWidgetName = 'ScheduleWidgetProvider';
+  
   static Future<void> updateTasks(List<Task> tasks) async {
     final allTasks = tasks.map((t) => {
       'id': t.id,
@@ -34,12 +35,30 @@ class WidgetService {
     final jsonString = jsonEncode(allTasks);
     await HomeWidget.saveWidgetData<String>('tasks_json', jsonString);
     await _updateWidget();
+    
+    // Also update schedule if needed
+    final scheduledTasks = tasks.where((t) => t.scheduledAt != null && !t.completed).toList();
+    await updateSchedule(scheduledTasks);
+  }
+
+  static Future<void> updateSchedule(List<Task> tasks) async {
+    final scheduleItems = tasks.map((t) => {
+      'id': t.id,
+      'text': t.text,
+      'scheduledAt': t.scheduledAt?.toIso8601String(),
+      'duration': t.scheduledDuration,
+      'projectId': t.projectId,
+    }).toList();
+
+    await HomeWidget.saveWidgetData<String>('schedule_json', jsonEncode(scheduleItems));
+    await _updateScheduleWidget();
   }
 
   static Future<void> updateProjects(List<dynamic> projects) async {
     final projectData = projects.map((p) => {
       'id': p.id,
       'name': p.name,
+      'color': p.color?.value ?? 0xFF000000,
     }).toList();
     
     // Add "All Tasks" option
@@ -47,6 +66,7 @@ class WidgetService {
 
     await HomeWidget.saveWidgetData<String>('projects_json', jsonEncode(projectData));
     await _updateWidget();
+    await _updateScheduleWidget();
   }
 
   static Future<void> updateTimer({
@@ -58,6 +78,8 @@ class WidgetService {
     await HomeWidget.saveWidgetData<bool>('timer_active', isActive);
     await HomeWidget.saveWidgetData<String>('timer_task', taskText);
     await _updateWidget();
+    // Schedule widget might want to show timer progress too
+    await _updateScheduleWidget();
   }
 
   static Future<void> _updateWidget() async {
@@ -65,6 +87,14 @@ class WidgetService {
       name: _androidWidgetName,
       androidName: _androidWidgetName,
       iOSName: 'TaskWidget',
+    );
+  }
+
+  static Future<void> _updateScheduleWidget() async {
+    await HomeWidget.updateWidget(
+      name: _scheduleWidgetName,
+      androidName: _scheduleWidgetName,
+      iOSName: 'ScheduleWidget',
     );
   }
 }
