@@ -27,6 +27,7 @@ class WidgetService {
       'text': t.text,
       'completed': t.completed,
       'priority': t.attributes['importance'] ?? 'medium',
+      'priorityScore': t.priorityScore,
       'projectId': t.projectId,
     }).toList();
 

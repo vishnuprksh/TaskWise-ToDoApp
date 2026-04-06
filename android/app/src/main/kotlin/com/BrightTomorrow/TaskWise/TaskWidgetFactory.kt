@@ -46,8 +46,8 @@ class TaskWidgetFactory(private val context: Context, intent: Intent) : RemoteVi
             }
         }
         
-        // Sort: Incomplete first, then by priority (simplified for now)
-        tasks = filteredTasks.sortedWith(compareBy({ it.optBoolean("completed") }, { it.optString("priority") }))
+        // Sort: By priorityScore descending (incomplete only as completed are already filtered)
+        tasks = filteredTasks.sortedByDescending { it.optDouble("priorityScore", 0.0) }
     }
 
     override fun onDestroy() {
