@@ -5,6 +5,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.widget.RemoteViews
 import android.widget.RemoteViewsService
+import android.net.Uri
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -61,16 +62,13 @@ class TaskWidgetFactory(private val context: Context, intent: Intent) : RemoteVi
 
         // Set Fill-in Intent for starting Pomodoro
         val fillInIntent = Intent().apply {
-            putExtra("taskId", taskId)
-            putExtra("taskText", text)
-            putExtra("action", "START_POMODORO")
+            data = Uri.parse("homeWidget://startPomodoro?taskId=$taskId")
         }
         views.setOnClickFillInIntent(R.id.widget_task_pomodoro, fillInIntent)
         
         // Also allow clicking the text to open the app (using a different action)
         val openIntent = Intent().apply {
-            putExtra("taskId", taskId)
-            putExtra("action", "OPEN_TASK")
+            data = Uri.parse("homeWidget://openTask?taskId=$taskId")
         }
         views.setOnClickFillInIntent(R.id.widget_task_text, openIntent)
 

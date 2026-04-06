@@ -1,9 +1,7 @@
 # Task Tracking
-- [/] **Current Focus:** Advanced Widget Expansion (Scrollable Tasks, Project Switcher, Pomodoro Integration)
-- [x] Implement Native Android `ListView` for scrollable tasks.
-- [x] Create `RemoteViewsFactory` for dynamic data population.
-- [x] Build Project Navigation (Next/Prev) UI in the widget header.
-- [x] Connect Pomodoro button click to Flutter background task.
-- [ ] Verify build and integration through `flutter run`.
-- [ ] Debug potential state synchronization issues between app and widget.
+- [ ] **Current Focus:** Widget Simplification & Pomodoro Deep-Linking
+- [x] Update `TaskWidgetProvider.kt` to remove timer logic and set activity template.
+- [x] Update `TaskWidgetFactory.kt` to include task IDs in fill-in intents.
+- [x] Handle `startPomodoro` deep-link in `HomeScreen.dart`.
+- [x] Verify deep-link to `TimerScreen` on device.
 **Blockers:** None.

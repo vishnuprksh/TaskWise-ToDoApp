@@ -10,6 +10,8 @@ import '../widgets/task_form.dart';
 import 'projects_screen.dart';
 import 'scheduler_screen.dart';
 import '../services/widget_service.dart';
+import 'package:home_widget/home_widget.dart';
+import 'timer_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -22,6 +24,51 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   String? _selectedProjectId;
   bool _isFinishedExpanded = false;
   String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _setupHomeWidgetListener();
+  }
+
+  void _setupHomeWidgetListener() {
+    // Check if the app was launched from the widget
+    HomeWidget.initiallyLaunchedFromHomeWidget().then(_handleWidgetClick);
+    
+    // Listen for clicks while the app is in the background
+    HomeWidget.widgetClicked.listen(_handleWidgetClick);
+  }
+
+  void _handleWidgetClick(Uri? uri) {
+    if (uri == null) return;
+    
+    debugPrint('TaskWise Widget Clicked: $uri');
+    final taskId = uri.queryParameters['taskId'];
+    if (taskId == null) return;
+
+    // We wait a bit to ensure the providers are ready
+    Future.delayed(const Duration(milliseconds: 500), () {
+      final tasks = ref.read(tasksProvider).value;
+      if (tasks == null) return;
+      
+      try {
+        final task = tasks.firstWhere((t) => t.id == taskId);
+        
+        if (uri.host == 'startPomodoro') {
+          if (mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => TimerScreen(task: task)),
+            );
+          }
+        } else if (uri.host == 'openTask') {
+          _showTaskForm(task: task);
+        }
+      } catch (e) {
+        debugPrint('Error handling widget click: $e');
+      }
+    });
+  }
 
   @override
   void dispose() {

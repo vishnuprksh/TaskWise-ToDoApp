@@ -11,7 +11,6 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_alignParentStart="true"
-        android:layout_toStartOf="@+id/timer_container"
         android:orientation="vertical"
         android:padding="8dp">
 
@@ -65,43 +64,6 @@
             android:text="No tasks found"
             android:textColor="#A1A1AA"
             android:visibility="gone" />
-    </LinearLayout>
-
-    <!-- Pomodoro Timer Area -->
-    <LinearLayout
-        android:id="@+id/timer_container"
-        android:layout_width="100dp"
-        android:layout_height="match_parent"
-        android:layout_alignParentEnd="true"
-        android:background="@drawable/timer_bg"
-        android:gravity="center"
-        android:orientation="vertical"
-        android:padding="4dp">
-
-        <TextView
-            android:id="@+id/widget_timer_value"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="25:00"
-            android:textColor="#FFFFFF"
-            android:textSize="22sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/widget_timer_status"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="FOCUS"
-            android:textColor="#6366F1"
-            android:textSize="10sp"
-            android:textStyle="bold" />
-
-        <ImageView
-            android:id="@+id/widget_timer_toggle"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:layout_marginTop="4dp"
-            android:src="@drawable/ic_play" />
     </LinearLayout>
 
 </RelativeLayout>
