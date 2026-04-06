@@ -33,7 +33,7 @@
             android:textSize="12sp" />
     </LinearLayout>
 
-    <View
+    <FrameLayout
         android:id="@+id/header_divider"
         android:layout_width="match_parent"
         android:layout_height="1dp"
@@ -66,12 +66,12 @@
             android:orientation="horizontal"
             android:gravity="center_vertical">
             
-            <View
+            <FrameLayout
                 android:layout_width="8dp"
                 android:layout_height="8dp"
                 android:background="@drawable/circle_indicator" />
             
-            <View
+            <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="2dp"
                 android:background="#4F86F7" />

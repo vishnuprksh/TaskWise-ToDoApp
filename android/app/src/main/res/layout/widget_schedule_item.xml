@@ -6,7 +6,7 @@
     android:paddingRight="12dp">
 
     <!-- Timeline Stem (Vertical line) -->
-    <View
+    <FrameLayout
         android:id="@+id/timeline_stem"
         android:layout_width="2dp"
         android:layout_height="match_parent"
