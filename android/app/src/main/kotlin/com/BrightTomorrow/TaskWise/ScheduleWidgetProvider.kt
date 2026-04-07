@@ -11,11 +11,27 @@ import android.widget.RemoteViews
 import es.antonborri.home_widget.HomeWidgetProvider
 import java.text.SimpleDateFormat
 import java.util.*
+import android.os.Bundle
 
 class ScheduleWidgetProvider : HomeWidgetProvider() {
 
     companion object {
         const val ACTION_REFRESH = "com.BrightTomorrow.TaskWise.SCHEDULE_REFRESH"
+    }
+
+    override fun onAppWidgetOptionsChanged(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        newOptions: Bundle
+    ) {
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
+        val prefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
+        val maxHeight = newOptions.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT)
+        if (maxHeight > 0) {
+            prefs.edit().putInt("widget_height_$appWidgetId", maxHeight).apply()
+        }
+        appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_schedule_list)
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -34,6 +50,12 @@ class ScheduleWidgetProvider : HomeWidgetProvider() {
 
     override fun onUpdate(context: Context, appWidgetManager: AppWidgetManager, appWidgetIds: IntArray, widgetData: SharedPreferences) {
         for (appWidgetId in appWidgetIds) {
+            val options = appWidgetManager.getAppWidgetOptions(appWidgetId)
+            val maxHeight = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT)
+            if (maxHeight > 0) {
+                widgetData.edit().putInt("widget_height_$appWidgetId", maxHeight).apply()
+            }
+            
             val views = RemoteViews(context.packageName, R.layout.schedule_widget_layout).apply {
                 
                 // Update Date

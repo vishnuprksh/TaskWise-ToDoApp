@@ -13,12 +13,16 @@ import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.*
 
-class ScheduleWidgetFactory(private val context: Context, intent: Intent) : RemoteViewsService.RemoteViewsFactory {
+class ScheduleWidgetFactory(private val context: Context, private val intent: Intent) : RemoteViewsService.RemoteViewsFactory {
+
+    private val appWidgetId: Int
+        get() = intent.getIntExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, android.appwidget.AppWidgetManager.INVALID_APPWIDGET_ID)
 
     private var scheduleItems: JSONArray = JSONArray()
-    private val slotCount = 36 // 9 hours total (increased for better scroll feel)
-    private val slotMinutes = 15
+    private val slotCount = 24 // 24 hours total
+    private val slotMinutes = 60
     private var windowStartTime: Long = 0
+    private var spacerHeightPx = 0
 
     override fun onCreate() {}
 
@@ -32,21 +36,44 @@ class ScheduleWidgetFactory(private val context: Context, intent: Intent) : Remo
             scheduleItems = JSONArray()
         }
         
-        // Calculate the window start time: now minus 18 slots (4.5 hours, half of the 9h window)
-        val now = Calendar.getInstance()
-        // Round to nearest 15 mins for stability
-        now.set(Calendar.SECOND, 0)
-        now.set(Calendar.MILLISECOND, 0)
-        val minutes = now.get(Calendar.MINUTE)
-        now.set(Calendar.MINUTE, minutes - (minutes % slotMinutes))
+        val maxHeight = prefs.getInt("widget_height_$appWidgetId", 240)
         
-        windowStartTime = now.timeInMillis - (18 * slotMinutes * 60 * 1000)
+        // Approximate header height = 50dp. Center is (maxHeight - 50) / 2
+        val listHeightDp = maxHeight - 50
+        val centerOffsetDp = if (listHeightDp > 0) listHeightDp / 2 else 100
+        
+        val nowMillis = System.currentTimeMillis()
+        
+        // Time represented by the top of the ListView (Y=0)
+        // Each item (1 hour) is 60dp high. So 60 mins / 60 dp = 1 min per dp.
+        val millisPerDp = (slotMinutes * 60 * 1000) / 60
+        val targetTopTime = nowMillis - (centerOffsetDp * millisPerDp)
+        
+        // Find the next 15-minute boundary AFTER targetTopTime to ensure spacer is positive
+        val targetTopTimeMinutes = targetTopTime / 60000.0
+        val startBoundaryMinutes = kotlin.math.ceil(targetTopTimeMinutes / slotMinutes).toLong() * slotMinutes
+        windowStartTime = startBoundaryMinutes * 60 * 1000L
+        
+        // Spacer height in dp, converted to px
+        val spacerMs = windowStartTime - targetTopTime
+        val spacerDp = (spacerMs.toFloat() / millisPerDp.toFloat())
+        val density = context.resources.displayMetrics.density
+        spacerHeightPx = (spacerDp * density).toInt()
     }
 
-    override fun getCount(): Int = slotCount
+    override fun getCount(): Int = slotCount + 1
 
     override fun getViewAt(position: Int): RemoteViews {
-        val slotTime = windowStartTime + (position * slotMinutes * 60 * 1000)
+        if (position == 0) {
+            val views = RemoteViews(context.packageName, R.layout.widget_schedule_spacer)
+            val height = if (spacerHeightPx > 0) spacerHeightPx else 1
+            val bitmap = android.graphics.Bitmap.createBitmap(1, height, android.graphics.Bitmap.Config.ARGB_8888)
+            views.setImageViewBitmap(R.id.spacer_image, bitmap)
+            return views
+        }
+        
+        val slotIndex = position - 1
+        val slotTime = windowStartTime + (slotIndex * slotMinutes * 60 * 1000)
         val views = RemoteViews(context.packageName, R.layout.widget_schedule_item)
         
         // Format time label
@@ -104,7 +131,7 @@ class ScheduleWidgetFactory(private val context: Context, intent: Intent) : Remo
     }
 
     override fun getLoadingView(): RemoteViews? = null
-    override fun getViewTypeCount(): Int = 1
+    override fun getViewTypeCount(): Int = 2
     override fun getItemId(position: Int): Long = position.toLong()
     override fun hasStableIds(): Boolean = true
     override fun onDestroy() {}
