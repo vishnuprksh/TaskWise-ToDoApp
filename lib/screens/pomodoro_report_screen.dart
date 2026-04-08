@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:percent_indicator/percent_indicator.dart';
 import '../models/task.dart';
 import '../models/project.dart';
+import '../models/pomodoro_session.dart';
 import '../services/firestore_service.dart';
 import '../utils/time_utils.dart';
 
@@ -20,6 +21,7 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
   Widget build(BuildContext context) {
     final tasksAsync = ref.watch(tasksProvider);
     final projectsAsync = ref.watch(projectsProvider);
+    final sessionsAsync = ref.watch(sessionsProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
@@ -37,7 +39,11 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
       ),
       body: tasksAsync.when(
         data: (tasks) => projectsAsync.when(
-          data: (projects) => _buildReport(tasks, projects),
+          data: (projects) => sessionsAsync.when(
+            data: (sessions) => _buildReport(tasks, projects, sessions),
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (err, _) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.red))),
+          ),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, _) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.red))),
         ),
@@ -47,17 +53,14 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
     );
   }
 
-  Widget _buildReport(List<Task> allTasks, List<Project> projects) {
-    // Only consider tasks with some focus time
-    final focusedTasks = allTasks.where((t) => t.timeSpent > 0).toList();
-
-    final totalSeconds = focusedTasks.fold(0, (sum, t) => sum + t.timeSpent);
+  Widget _buildReport(List<Task> allTasks, List<Project> projects, List<PomodoroSession> sessions) {
+    final totalSeconds = sessions.fold(0, (sum, s) => sum + s.duration);
     
-    // Project breakdown
+    // Project breakdown from sessions
     final Map<String, int> projectSeconds = {};
-    for (var task in focusedTasks) {
-      final pid = task.projectId ?? 'no_project';
-      projectSeconds[pid] = (projectSeconds[pid] ?? 0) + task.timeSpent;
+    for (var session in sessions) {
+      final pid = session.projectId ?? 'no_project';
+      projectSeconds[pid] = (projectSeconds[pid] ?? 0) + session.duration;
     }
 
     final projectList = projectSeconds.entries.map((e) {
@@ -72,8 +75,19 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
 
     projectList.sort((a, b) => (b['seconds'] as int).compareTo(a['seconds'] as int));
 
-    // Sort tasks by focus time
-    focusedTasks.sort((a, b) => b.timeSpent.compareTo(a.timeSpent));
+    // Task aggregation from sessions
+    final Map<String, int> taskSeconds = {};
+    for (var session in sessions) {
+      taskSeconds[session.taskId] = (taskSeconds[session.taskId] ?? 0) + session.duration;
+    }
+
+    final taskEntries = taskSeconds.entries.map((e) {
+      final task = allTasks.firstWhere((t) => t.id == e.key,
+          orElse: () => Task(id: e.key, text: 'Deleted Task', attributes: {}));
+      return {'task': task, 'seconds': e.value};
+    }).toList();
+
+    taskEntries.sort((a, b) => (b['seconds'] as int).compareTo(a['seconds'] as int));
 
     return ListView(
       padding: const EdgeInsets.all(24),
@@ -83,7 +97,7 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
           style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 32),
-        _buildBigStats(totalSeconds),
+        _buildBigStats(totalSeconds, sessions.length),
         const SizedBox(height: 40),
         _buildSectionHeader('Project Distribution', LucideIcons.pieChart),
         const SizedBox(height: 20),
@@ -91,8 +105,8 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
         const SizedBox(height: 40),
         _buildSectionHeader('Top Focused Tasks', LucideIcons.target),
         const SizedBox(height: 20),
-        ...focusedTasks.take(10).map((t) => _buildTaskFocusItem(t, projects)),
-        if (focusedTasks.isEmpty)
+        ...taskEntries.take(10).map((e) => _buildTaskFocusItem(e['task'] as Task, e['seconds'] as int, projects)),
+        if (sessions.isEmpty)
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 40),
@@ -106,9 +120,7 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
     );
   }
 
-  // Removed _buildDateHeader since historical tracking is removed
-
-  Widget _buildBigStats(int seconds) {
+  Widget _buildBigStats(int seconds, int sessionCount) {
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
@@ -150,7 +162,7 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
                 const Icon(LucideIcons.flame, size: 16, color: Colors.orangeAccent),
                 const SizedBox(width: 8),
                 Text(
-                  '${(seconds / 1500).floor()} Sessions Completed',
+                  '$sessionCount Sessions Completed',
                   style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
                 ),
               ],
@@ -206,7 +218,7 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
     );
   }
 
-  Widget _buildTaskFocusItem(Task task, List<Project> projects) {
+  Widget _buildTaskFocusItem(Task task, int seconds, List<Project> projects) {
     final project = projects.firstWhere((p) => p.id == task.projectId, 
       orElse: () => Project(id: 'no_project', name: 'No Project', color: '#94A3B8', archived: false));
 
@@ -245,7 +257,7 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
             ),
           ),
           Text(
-            TimeUtils.formatSecondsToTime(task.timeSpent),
+            TimeUtils.formatSecondsToTime(seconds),
             style: const TextStyle(color: Colors.greenAccent, fontSize: 14, fontWeight: FontWeight.bold),
           ),
         ],

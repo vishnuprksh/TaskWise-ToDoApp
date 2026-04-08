@@ -6,7 +6,6 @@ class Task {
   final bool completed;
   final String? projectId;
   final double priorityScore;
-  final int timeSpent;
   final DateTime? scheduledAt;
   final int? scheduledDuration; // Duration in minutes
   final DateTime? startDate;
@@ -19,7 +18,6 @@ class Task {
     this.completed = false,
     this.projectId,
     this.priorityScore = 0.0,
-    this.timeSpent = 0,
     this.scheduledAt,
     this.scheduledDuration = 60, // Default 60 minutes
     this.startDate,
@@ -35,7 +33,6 @@ class Task {
       completed: data['completed'] ?? false,
       projectId: data['projectId'],
       priorityScore: (data['priorityScore'] ?? 0.0).toDouble(),
-      timeSpent: data['timeSpent'] ?? 0,
       scheduledAt: _parseDateTime(data['scheduledAt']),
       scheduledDuration: data['scheduledDuration'] ?? 60,
       startDate: _parseDateTime(data['startDate']),
@@ -62,7 +59,6 @@ class Task {
       'completed': completed,
       'projectId': projectId,
       'priorityScore': priorityScore,
-      'timeSpent': timeSpent,
       'scheduledAt': scheduledAt != null ? Timestamp.fromDate(scheduledAt!) : null,
       'scheduledDuration': scheduledDuration,
       'startDate': startDate != null ? Timestamp.fromDate(startDate!) : null,
@@ -96,7 +92,6 @@ class Task {
     bool? completed,
     String? projectId,
     double? priorityScore,
-    int? timeSpent,
     DateTime? scheduledAt,
     int? scheduledDuration,
     DateTime? startDate,
@@ -109,7 +104,6 @@ class Task {
       completed: completed ?? this.completed,
       projectId: projectId ?? this.projectId,
       priorityScore: priorityScore ?? this.priorityScore,
-      timeSpent: timeSpent ?? this.timeSpent,
       scheduledAt: scheduledAt ?? this.scheduledAt,
       scheduledDuration: scheduledDuration ?? this.scheduledDuration,
       startDate: startDate ?? this.startDate,

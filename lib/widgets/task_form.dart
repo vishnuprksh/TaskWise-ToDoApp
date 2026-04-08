@@ -58,7 +58,6 @@ class _TaskFormState extends ConsumerState<TaskForm> {
       'priorityScore': priorityScore,
       'scheduledAt': _scheduledAt != null ? _scheduledAt : null,
       'completed': widget.task?.completed ?? false,
-      'timeSpent': widget.task?.timeSpent ?? 0,
     };
 
     if (widget.task == null) {

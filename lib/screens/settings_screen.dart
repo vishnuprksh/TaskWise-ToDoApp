@@ -59,13 +59,22 @@ class SettingsScreen extends ConsumerWidget {
                     subtitle: 'FAQs and tutorials',
                     onTap: () {},
                   ),
-                  _buildSettingsItem(
-                    icon: LucideIcons.info,
-                    title: 'About TaskWise',
-                    subtitle: 'Version 1.0.0',
-                    onTap: () {},
-                  ),
-                ],
+                    _buildSettingsItem(
+                      icon: LucideIcons.info,
+                      title: 'About TaskWise',
+                      subtitle: 'Version 1.0.0',
+                      onTap: () {},
+                    ),
+                    const SizedBox(height: 32),
+                    _buildSectionHeader('Maintenance'),
+                    const SizedBox(height: 16),
+                    _buildSettingsItem(
+                      icon: LucideIcons.database,
+                      title: 'Cleanup Legacy Data',
+                      subtitle: 'Remove deprecated focus fields',
+                      onTap: () => _showCleanupDialog(context, ref),
+                    ),
+                  ],
               ),
             ),
           ],
@@ -284,5 +293,45 @@ class SettingsScreen extends ConsumerWidget {
         );
       }
     }
+  }
+
+  void _showCleanupDialog(BuildContext context, WidgetRef ref) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Text('Cleanup Legacy Data', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'This will permanently remove legacy focus fields from your tasks. Existing sessions will not be affected.',
+          style: TextStyle(color: Color(0xFF94A3B8)),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                await ref.read(firestoreServiceProvider).cleanupLegacyFocusData();
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Cleanup successful!'), backgroundColor: Colors.green),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Cleanup failed: $e'), backgroundColor: Colors.redAccent),
+                  );
+                }
+              }
+            },
+            child: const Text('Cleanup', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
   }
 }

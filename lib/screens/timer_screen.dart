@@ -11,6 +11,7 @@ import '../services/firestore_service.dart';
 import '../services/widget_service.dart';
 import '../utils/time_utils.dart';
 import 'pomodoro_report_screen.dart';
+import '../models/pomodoro_session.dart';
 
 enum TimerMode { work }
 
@@ -158,10 +159,15 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
   void _recordMinute() {
     final service = ref.read(firestoreServiceProvider);
     
-    // Update total time on task using atomic increment (60 seconds)
-    service.updateTask(widget.task.id, {
-      'timeSpent': FieldValue.increment(60),
-    });
+    // Add a discrete 1-minute session record
+    service.addPomodoroSession(PomodoroSession(
+      id: '', // Firestore will generate
+      taskId: widget.task.id,
+      projectId: widget.task.projectId,
+      duration: 60,
+      startTime: DateTime.now().subtract(const Duration(minutes: 1)),
+      endTime: DateTime.now(),
+    ));
   }
 
   void _toggleTimer() {
@@ -385,24 +391,6 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
                           ],
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E293B).withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(LucideIcons.target, size: 14, color: Color(0xFF64748B)),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Task Focus: ${TimeUtils.formatSecondsToTime(widget.task.timeSpent)}',
-                              style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
-                            ),
-                          ],
-                        ),
                       ),
                     ],
                     const SizedBox(height: 40),

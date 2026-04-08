@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/task.dart';
 import '../models/project.dart';
+import '../models/pomodoro_session.dart';
 import 'auth_service.dart';
 
 class FirestoreService {
@@ -15,6 +16,8 @@ class FirestoreService {
       _db.collection('users').doc(userId).collection('projects');
   CollectionReference get _tasksRef =>
       _db.collection('users').doc(userId).collection('tasks');
+  CollectionReference get _sessionsRef =>
+      _db.collection('users').doc(userId).collection('pomodoro_sessions');
 
   // Projects
   Stream<List<Project>> streamProjects() {
@@ -60,7 +63,31 @@ class FirestoreService {
     return _tasksRef.doc(id).delete();
   }
 
-  // Pomodoro Sessions removed as per redundancy consolidation
+  // Pomodoro Sessions
+  Stream<List<PomodoroSession>> streamPomodoroSessions() {
+    if (userId == null) return Stream.value([]);
+    return _sessionsRef
+        .orderBy('startTime', descending: true)
+        .snapshots()
+        .map((snapshot) =>
+            snapshot.docs.map((doc) => PomodoroSession.fromFirestore(doc)).toList());
+  }
+
+  Future<void> addPomodoroSession(PomodoroSession session) {
+    if (userId == null) throw Exception('User not logged in');
+    return _sessionsRef.add(session.toFirestore());
+  }
+
+  /// One-time cleanup method to remove legacy timeSpent fields from all tasks.
+  Future<void> cleanupLegacyFocusData() async {
+    if (userId == null) throw Exception('User not logged in');
+    final snapshot = await _tasksRef.get();
+    final batch = _db.batch();
+    for (var doc in snapshot.docs) {
+      batch.update(doc.reference, {'timeSpent': FieldValue.delete()});
+    }
+    return batch.commit();
+  }
 }
 
 final firestoreServiceProvider = Provider((ref) {
@@ -78,12 +105,17 @@ final tasksProvider = StreamProvider<List<Task>>((ref) {
   return firestoreService.streamTasks();
 });
 
-/// Returns total lifetime focus time across all tasks in SECONDS.
+final sessionsProvider = StreamProvider<List<PomodoroSession>>((ref) {
+  final firestoreService = ref.watch(firestoreServiceProvider);
+  return firestoreService.streamPomodoroSessions();
+});
+
+/// Returns total lifetime focus time across all SESSIONS in SECONDS.
 final totalFocusProvider = Provider<int>((ref) {
-  final tasksAsync = ref.watch(tasksProvider);
-  return tasksAsync.when(
-    data: (tasks) {
-      return tasks.fold(0, (sum, task) => sum + task.timeSpent);
+  final sessionsAsync = ref.watch(sessionsProvider);
+  return sessionsAsync.when(
+    data: (sessions) {
+      return sessions.fold(0, (sum, session) => sum + session.duration);
     },
     loading: () => 0,
     error: (_, __) => 0,
