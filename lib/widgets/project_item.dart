@@ -95,7 +95,7 @@ class ProjectItem extends StatelessWidget {
               Icon(LucideIcons.clock, size: 12, color: Colors.grey),
               const SizedBox(width: 4),
               Text(
-                TimeUtils.formatTime(totalTime),
+                TimeUtils.formatSecondsToTime(totalTime),
                 style: const TextStyle(color: Colors.grey, fontSize: 12),
               ),
             ],

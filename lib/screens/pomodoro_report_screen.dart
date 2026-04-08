@@ -49,31 +49,31 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
 
   Widget _buildReport(List<Task> allTasks, List<Project> projects) {
     // Only consider tasks with some focus time
-    final focusedTasks = allTasks.where((t) => (t.timeSpent ?? 0) > 0).toList();
+    final focusedTasks = allTasks.where((t) => t.timeSpent > 0).toList();
 
-    final totalMinutes = focusedTasks.fold(0, (sum, t) => sum + (t.timeSpent ?? 0));
+    final totalSeconds = focusedTasks.fold(0, (sum, t) => sum + t.timeSpent);
     
     // Project breakdown
-    final Map<String, int> projectMinutes = {};
+    final Map<String, int> projectSeconds = {};
     for (var task in focusedTasks) {
-      final pid = task.projectId;
-      projectMinutes[pid] = (projectMinutes[pid] ?? 0) + (task.timeSpent ?? 0);
+      final pid = task.projectId ?? 'no_project';
+      projectSeconds[pid] = (projectSeconds[pid] ?? 0) + task.timeSpent;
     }
 
-    final projectList = projectMinutes.entries.map((e) {
+    final projectList = projectSeconds.entries.map((e) {
       final project = projects.firstWhere((p) => p.id == e.key, 
         orElse: () => Project(id: 'no_project', name: 'No Project', color: '#94A3B8', archived: false));
       return {
         'project': project,
-        'minutes': e.value,
-        'percentage': totalMinutes > 0 ? e.value / totalMinutes : 0.0,
+        'seconds': e.value,
+        'percentage': totalSeconds > 0 ? e.value / totalSeconds : 0.0,
       };
     }).toList();
 
-    projectList.sort((a, b) => (b['minutes'] as int).compareTo(a['minutes'] as int));
+    projectList.sort((a, b) => (b['seconds'] as int).compareTo(a['seconds'] as int));
 
     // Sort tasks by focus time
-    focusedTasks.sort((a, b) => (b.timeSpent ?? 0).compareTo(a.timeSpent ?? 0));
+    focusedTasks.sort((a, b) => b.timeSpent.compareTo(a.timeSpent));
 
     return ListView(
       padding: const EdgeInsets.all(24),
@@ -83,7 +83,7 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
           style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 32),
-        _buildBigStats(totalMinutes),
+        _buildBigStats(totalSeconds),
         const SizedBox(height: 40),
         _buildSectionHeader('Project Distribution', LucideIcons.pieChart),
         const SizedBox(height: 20),
@@ -108,7 +108,7 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
 
   // Removed _buildDateHeader since historical tracking is removed
 
-  Widget _buildBigStats(int minutes) {
+  Widget _buildBigStats(int seconds) {
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
@@ -134,7 +134,7 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            TimeUtils.formatTime(minutes),
+            TimeUtils.formatSecondsToTime(seconds),
             style: const TextStyle(color: Colors.white, fontSize: 48, fontWeight: FontWeight.w900, letterSpacing: -1),
           ),
           const SizedBox(height: 16),
@@ -150,7 +150,7 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
                 const Icon(LucideIcons.flame, size: 16, color: Colors.orangeAccent),
                 const SizedBox(width: 8),
                 Text(
-                  '${(minutes / 25).floor()} Sessions Completed',
+                  '${(seconds / 1500).floor()} Sessions Completed',
                   style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
                 ),
               ],
@@ -176,7 +176,7 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
 
   Widget _buildProjectProgress(Map<String, dynamic> item) {
     final project = item['project'] as Project;
-    final minutes = item['minutes'] as int;
+    final seconds = item['seconds'] as int;
     final percentage = item['percentage'] as double;
 
     return Padding(
@@ -188,7 +188,7 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(project.name, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-              Text(TimeUtils.formatTime(minutes), style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14)),
+              Text(TimeUtils.formatSecondsToTime(seconds), style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14)),
             ],
           ),
           const SizedBox(height: 8),
@@ -245,7 +245,7 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
             ),
           ),
           Text(
-            '${task.timeSpent}m',
+            TimeUtils.formatSecondsToTime(task.timeSpent),
             style: const TextStyle(color: Colors.greenAccent, fontSize: 14, fontWeight: FontWeight.bold),
           ),
         ],

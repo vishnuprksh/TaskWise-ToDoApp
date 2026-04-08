@@ -78,6 +78,7 @@ final tasksProvider = StreamProvider<List<Task>>((ref) {
   return firestoreService.streamTasks();
 });
 
+/// Returns total lifetime focus time across all tasks in SECONDS.
 final totalFocusProvider = Provider<int>((ref) {
   final tasksAsync = ref.watch(tasksProvider);
   return tasksAsync.when(

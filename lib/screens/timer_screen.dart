@@ -158,9 +158,9 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
   void _recordMinute() {
     final service = ref.read(firestoreServiceProvider);
     
-    // Update total time on task using atomic increment
+    // Update total time on task using atomic increment (60 seconds)
     service.updateTask(widget.task.id, {
-      'timeSpent': FieldValue.increment(1),
+      'timeSpent': FieldValue.increment(60),
     });
   }
 
@@ -379,7 +379,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
                             const Icon(LucideIcons.clock, size: 16, color: Color(0xFF94A3B8)),
                             const SizedBox(width: 6),
                             Text(
-                              'Total Lifetime Focus: ${TimeUtils.formatTime(ref.watch(totalFocusProvider))}',
+                              'Total Lifetime Focus: ${TimeUtils.formatSecondsToTime(ref.watch(totalFocusProvider))}',
                               style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
                             ),
                           ],
@@ -398,7 +398,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
                             const Icon(LucideIcons.target, size: 14, color: Color(0xFF64748B)),
                             const SizedBox(width: 6),
                             Text(
-                              'Task Focus: ${TimeUtils.formatTime(widget.task.timeSpent ?? 0)}',
+                              'Task Focus: ${TimeUtils.formatSecondsToTime(widget.task.timeSpent)}',
                               style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
                             ),
                           ],
