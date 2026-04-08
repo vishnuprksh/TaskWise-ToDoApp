@@ -4,6 +4,7 @@
 - **Frontend:** Flutter
 - **Backend:** Firebase (Auth, Firestore, Messaging)
 - **State Management:** Riverpod
+- **Tracking:** Pomodoro sessions & productivity metrics
 - **UI:** Custom modern design with Lucide Icons, Google Fonts, and smooth animations.
 **Guiding Principles:** 
 - Visual excellence and premium feel.

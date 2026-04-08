@@ -1,8 +1,10 @@
 # Task Tracking
-- [x] **Current Focus:** Schedule Widget Implementation
-- [x] Implement `updateSchedule` in `WidgetService.dart`.
-- [x] Create `ScheduleWidgetProvider.kt` and `ScheduleWidgetFactory.kt`.
-- [x] Design `schedule_widget_layout.xml` and `widget_schedule_item.xml`.
-- [x] Register new widget in `AndroidManifest.xml`.
-- [x] Research centering logic (Sliding Window Approach).
-**Blockers:** None.
+- [ ] **Current Focus:** Pomodoro Tracking & Reporting
+- [ ] Implement `PomodoroSession` model.
+- [ ] Update `FirestoreService` with session tracking methods.
+- [ ] Fix focus time increment bug in `TimerScreen`.
+- [ ] Show "Today's Total Focus" in `TimerScreen`.
+- [ ] Create `PomodoroReportScreen` with dashboard.
+- [ ] Verify everything syncs with Firebase.
+- [ ] Run `flutter run mobile`.
+**Blockers:** Awaiting user approval on implementation plan.

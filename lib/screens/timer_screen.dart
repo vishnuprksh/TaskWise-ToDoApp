@@ -5,10 +5,13 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/task.dart';
+import '../models/pomodoro_session.dart';
 import '../services/firestore_service.dart';
 import '../services/widget_service.dart';
 import '../utils/time_utils.dart';
+import 'pomodoro_report_screen.dart';
 
 enum TimerMode { work }
 
@@ -100,7 +103,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
           if (_currentMode == TimerMode.work) {
             // Update time spent in Firestore every minute to avoid too many writes
             if (_timeLeft % 60 == 0) {
-              _updateTimeSpent(1);
+              _recordMinute();
             }
           }
           // Update Home Widget
@@ -153,11 +156,23 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
     );
   }
 
-  void _updateTimeSpent(int minutes) {
+  void _recordMinute() {
     final service = ref.read(firestoreServiceProvider);
+    
+    // 1. Update total time on task using atomic increment to fix the bug
     service.updateTask(widget.task.id, {
-      'timeSpent': (widget.task.timeSpent ?? 0) + minutes,
+      'timeSpent': FieldValue.increment(1),
     });
+
+    // 2. Add as a Pomodoro Session for tracking/reporting
+    final session = PomodoroSession(
+      id: '', // Firestore will assign ID
+      taskId: widget.task.id,
+      projectId: widget.task.projectId,
+      startTime: DateTime.now(),
+      duration: 1,
+    );
+    service.addSession(session);
   }
 
   void _toggleTimer() {
@@ -317,6 +332,15 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
           ),
           actions: [
             IconButton(
+              icon: const Icon(LucideIcons.barChart2, color: Colors.white),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const PomodoroReportScreen()),
+                );
+              },
+            ),
+            IconButton(
               icon: const Icon(LucideIcons.settings, color: Colors.white),
               onPressed: () {
                 _showSettingsModal();
@@ -366,8 +390,27 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
                             const Icon(LucideIcons.clock, size: 16, color: Color(0xFF94A3B8)),
                             const SizedBox(width: 6),
                             Text(
-                              'Total Focus: ${TimeUtils.formatTime(widget.task.timeSpent ?? 0)}',
+                              'Today\'s Total: ${TimeUtils.formatTime(ref.watch(todayFocusProvider))}',
                               style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E293B).withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(LucideIcons.target, size: 14, color: Color(0xFF64748B)),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Task Focus: ${TimeUtils.formatTime(widget.task.timeSpent ?? 0)}',
+                              style: const TextStyle(color: Color(0xFF64748B), fontSize: 13),
                             ),
                           ],
                         ),
