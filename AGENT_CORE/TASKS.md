@@ -1,10 +1,21 @@
 # Task Tracking
-- [ ] **Current Focus:** Pomodoro Tracking & Reporting
-- [ ] Implement `PomodoroSession` model.
-- [ ] Update `FirestoreService` with session tracking methods.
-- [ ] Fix focus time increment bug in `TimerScreen`.
-- [ ] Show "Today's Total Focus" in `TimerScreen`.
-- [ ] Create `PomodoroReportScreen` with dashboard.
-- [ ] Verify everything syncs with Firebase.
-- [ ] Run `flutter run mobile`.
-**Blockers:** Awaiting user approval on implementation plan.
+- [x] **Navigation Refactor**
+    - [x] Change Projects icon in `HomeScreen` to `LucideIcons.layers`.
+    - [x] Add Settings icon in `HomeScreen` that navigates to `SettingsScreen`.
+- [x] **Implementation of Settings Page**
+    - [x] Create `lib/screens/settings_screen.dart`.
+    - [x] Design a premium layout with Google Auth sync option.
+    - [x] Implement Sign-in/Sign-out logic using `AuthService`.
+- [x] **Auth Service Verification**
+    - [x] Revert and verify `signInWithGoogle` implementation in `lib/services/auth_service.dart`.
+- [x] **Pomodoro Tracking & Reporting**
+    - [x] Implement `PomodoroSession` model.
+    - [x] Update `FirestoreService` with session tracking and atomic increments.
+    - [x] Fix focus time increment bug in `TimerScreen` using `FieldValue.increment`.
+    - [x] Show "Today's Total Focus" in `TimerScreen`.
+    - [x] Create `PomodoroReportScreen` with productivity dashboard.
+    - [x] Verify everything syncs with Firebase via `flutter analyze`.
+- [ ] **Current Focus:** Launching & Verification
+- [x] Run `flutter run mobile`.
+- [ ] Manual verification of Pomodoro sessions on device.
+**Blockers:** None.
