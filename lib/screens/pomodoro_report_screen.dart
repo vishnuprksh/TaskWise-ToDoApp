@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:intl/intl.dart';
 import 'package:percent_indicator/percent_indicator.dart';
-import '../models/pomodoro_session.dart';
+import '../models/task.dart';
 import '../models/project.dart';
 import '../services/firestore_service.dart';
 import '../utils/time_utils.dart';
@@ -16,11 +15,10 @@ class PomodoroReportScreen extends ConsumerStatefulWidget {
 }
 
 class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
-  DateTime _selectedDate = DateTime.now();
 
   @override
   Widget build(BuildContext context) {
-    final sessionsAsync = ref.watch(sessionsProvider);
+    final tasksAsync = ref.watch(tasksProvider);
     final projectsAsync = ref.watch(projectsProvider);
 
     return Scaffold(
@@ -37,9 +35,9 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
           style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
-      body: sessionsAsync.when(
-        data: (sessions) => projectsAsync.when(
-          data: (projects) => _buildReport(sessions, projects),
+      body: tasksAsync.when(
+        data: (tasks) => projectsAsync.when(
+          data: (projects) => _buildReport(tasks, projects),
           loading: () => const Center(child: CircularProgressIndicator()),
           error: (err, _) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.red))),
         ),
@@ -49,20 +47,17 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
     );
   }
 
-  Widget _buildReport(List<PomodoroSession> allSessions, List<Project> projects) {
-    final filteredSessions = allSessions.where((s) => 
-      s.startTime.year == _selectedDate.year && 
-      s.startTime.month == _selectedDate.month && 
-      s.startTime.day == _selectedDate.day
-    ).toList();
+  Widget _buildReport(List<Task> allTasks, List<Project> projects) {
+    // Only consider tasks with some focus time
+    final focusedTasks = allTasks.where((t) => (t.timeSpent ?? 0) > 0).toList();
 
-    final totalMinutes = filteredSessions.fold(0, (sum, s) => sum + s.duration);
+    final totalMinutes = focusedTasks.fold(0, (sum, t) => sum + (t.timeSpent ?? 0));
     
     // Project breakdown
     final Map<String, int> projectMinutes = {};
-    for (var session in filteredSessions) {
-      final pid = session.projectId ?? 'no_project';
-      projectMinutes[pid] = (projectMinutes[pid] ?? 0) + session.duration;
+    for (var task in focusedTasks) {
+      final pid = task.projectId;
+      projectMinutes[pid] = (projectMinutes[pid] ?? 0) + (task.timeSpent ?? 0);
     }
 
     final projectList = projectMinutes.entries.map((e) {
@@ -77,10 +72,16 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
 
     projectList.sort((a, b) => (b['minutes'] as int).compareTo(a['minutes'] as int));
 
+    // Sort tasks by focus time
+    focusedTasks.sort((a, b) => (b.timeSpent ?? 0).compareTo(a.timeSpent ?? 0));
+
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
-        _buildDateHeader(),
+        const Text(
+          'Lifetime Productivity',
+          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 32),
         _buildBigStats(totalMinutes),
         const SizedBox(height: 40),
@@ -88,15 +89,15 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
         const SizedBox(height: 20),
         ...projectList.map((item) => _buildProjectProgress(item)),
         const SizedBox(height: 40),
-        _buildSectionHeader('Recent Sessions', LucideIcons.history),
+        _buildSectionHeader('Top Focused Tasks', LucideIcons.target),
         const SizedBox(height: 20),
-        ...filteredSessions.take(10).map((s) => _buildSessionItem(s, projects)),
-        if (filteredSessions.isEmpty)
+        ...focusedTasks.take(10).map((t) => _buildTaskFocusItem(t, projects)),
+        if (focusedTasks.isEmpty)
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 40),
               child: Text(
-                'No focus sessions recorded for this day.',
+                'No focus time recorded yet.',
                 style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 14),
               ),
             ),
@@ -105,38 +106,7 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
     );
   }
 
-  Widget _buildDateHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        IconButton(
-          icon: const Icon(LucideIcons.chevronLeft, color: Colors.white70),
-          onPressed: () => setState(() => _selectedDate = _selectedDate.subtract(const Duration(days: 1))),
-        ),
-        Column(
-          children: [
-            Text(
-              DateFormat('EEEE, MMM d').format(_selectedDate),
-              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            if (_selectedDate.day == DateTime.now().day && _selectedDate.month == DateTime.now().month)
-              const Text(
-                'TODAY',
-                style: TextStyle(color: Color(0xFF6366F1), fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1),
-              ),
-          ],
-        ),
-        IconButton(
-          icon: const Icon(LucideIcons.chevronRight, color: Colors.white70),
-          onPressed: () {
-            if (_selectedDate.isBefore(DateTime.now().subtract(const Duration(hours: 23)))) {
-              setState(() => _selectedDate = _selectedDate.add(const Duration(days: 1)));
-            }
-          },
-        ),
-      ],
-    );
-  }
+  // Removed _buildDateHeader since historical tracking is removed
 
   Widget _buildBigStats(int minutes) {
     return Container(
@@ -236,8 +206,8 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
     );
   }
 
-  Widget _buildSessionItem(PomodoroSession session, List<Project> projects) {
-    final project = projects.firstWhere((p) => p.id == session.projectId, 
+  Widget _buildTaskFocusItem(Task task, List<Project> projects) {
+    final project = projects.firstWhere((p) => p.id == task.projectId, 
       orElse: () => Project(id: 'no_project', name: 'No Project', color: '#94A3B8', archived: false));
 
     return Container(
@@ -264,18 +234,18 @@ class _PomodoroReportScreenState extends ConsumerState<PomodoroReportScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  project.name,
+                  task.text,
                   style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
                 ),
                 Text(
-                  DateFormat('hh:mm a').format(session.startTime),
+                  project.name,
                   style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
                 ),
               ],
             ),
           ),
           Text(
-            '+${session.duration}m',
+            '${task.timeSpent}m',
             style: const TextStyle(color: Colors.greenAccent, fontSize: 14, fontWeight: FontWeight.bold),
           ),
         ],

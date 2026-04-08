@@ -7,7 +7,6 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/task.dart';
-import '../models/pomodoro_session.dart';
 import '../services/firestore_service.dart';
 import '../services/widget_service.dart';
 import '../utils/time_utils.dart';
@@ -159,20 +158,10 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
   void _recordMinute() {
     final service = ref.read(firestoreServiceProvider);
     
-    // 1. Update total time on task using atomic increment to fix the bug
+    // Update total time on task using atomic increment
     service.updateTask(widget.task.id, {
       'timeSpent': FieldValue.increment(1),
     });
-
-    // 2. Add as a Pomodoro Session for tracking/reporting
-    final session = PomodoroSession(
-      id: '', // Firestore will assign ID
-      taskId: widget.task.id,
-      projectId: widget.task.projectId,
-      startTime: DateTime.now(),
-      duration: 1,
-    );
-    service.addSession(session);
   }
 
   void _toggleTimer() {
@@ -390,7 +379,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
                             const Icon(LucideIcons.clock, size: 16, color: Color(0xFF94A3B8)),
                             const SizedBox(width: 6),
                             Text(
-                              'Today\'s Total: ${TimeUtils.formatTime(ref.watch(todayFocusProvider))}',
+                              'Total Lifetime Focus: ${TimeUtils.formatTime(ref.watch(totalFocusProvider))}',
                               style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
                             ),
                           ],

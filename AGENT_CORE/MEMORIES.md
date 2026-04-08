@@ -9,10 +9,10 @@
 - **Decision:** Use a "Sliding Window" in `RemoteViewsFactory`.
 - **Reasoning:** Since `RemoteViews` lacks programmatic scroll control, we will shift the source data window (e.g., `-3h` to `+3h` from `now`) each time the widget updates. This mimics a centered timeline by ensuring the "Current Time" is always mapped to the middle slot of the `ListView`.
 
-### 2026-04-08 - Pomodoro Tracking Strategy
-- **Context:** User reported incorrect focus time estimation and requested global/project-wise tracking.
-- **Decision:** Use a separate `pomodoro_sessions` collection in Firestore to record minutes spent. Use `FieldValue.increment(1)` for updating the aggregate `timeSpent` on tasks.
-- **Reasoning:** Atomic increments solve the stale data issue where the UI was using initial state values for updates. Recording sessions allows for flexible reporting (daily, weekly, project-wise) without cluttering the `Task` model with list of timestamps.
+### 2026-04-08 - Focusing Consolidating & Session Removal
+- **Context:** User requested removal of `pomodoro_sessions` as they were redundant with `Task.timeSpent`.
+- **Decision:** Deleted `pomodoro_sessions` collection and model. Refactored reporting to aggregate statistics directly from the `tasks` collection.
+- **Reasoning:** Reduces database complexity and storage costs. Simplifies the state management by having a single source of truth for focus time. Historical daily granularity was traded off for architectural simplicity as per user requirement.
 
 ### 2026-04-08 - Navigation Refactor & Settings Separation
 - **Context:** The Projects navigation was using the Settings icon, creating confusion.
