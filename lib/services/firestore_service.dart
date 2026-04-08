@@ -121,3 +121,19 @@ final totalFocusProvider = Provider<int>((ref) {
     error: (_, __) => 0,
   );
 });
+
+/// Returns total focus time for TODAY in SECONDS.
+final todayFocusProvider = Provider<int>((ref) {
+  final sessionsAsync = ref.watch(sessionsProvider);
+  return sessionsAsync.when(
+    data: (sessions) {
+      final now = DateTime.now();
+      final todayStart = DateTime(now.year, now.month, now.day);
+      return sessions
+          .where((s) => s.startTime.isAfter(todayStart))
+          .fold(0, (sum, session) => sum + session.duration);
+    },
+    loading: () => 0,
+    error: (_, __) => 0,
+  );
+});

@@ -26,4 +26,10 @@ class TimeUtils {
     }
     return formatMinutes(seconds ~/ 60);
   }
+
+  /// Formats seconds into decimal hours (e.g., "1.25 hrs")
+  static String formatSecondsToDecimalHours(int seconds) {
+    double hours = seconds / 3600;
+    return '${hours.toStringAsFixed(2)} hrs';
+  }
 }

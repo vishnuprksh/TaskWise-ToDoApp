@@ -15,7 +15,11 @@
     - [x] Show "Today's Total Focus" in `TimerScreen`.
     - [x] Create `PomodoroReportScreen` with productivity dashboard.
     - [x] Verify everything syncs with Firebase via `flutter analyze`.
-- [ ] **Current Focus:** Launching & Verification
+- [x] **Display Today's Focus Time**
+    - [x] Add `todayFocusProvider` to `firestore_service.dart`.
+    - [x] Add `formatSecondsToDecimalHours` to `time_utils.dart`.
+    - [x] UI: Update `TimerScreen` to show today's focus hours.
+- [x] **Current Focus:** Verification & Delivery
 - [x] Run `flutter run mobile`.
-- [ ] Manual verification of Pomodoro sessions on device.
+- [x] Manual verification of Pomodoro sessions on device.
 **Blockers:** None.

@@ -379,18 +379,34 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
                           color: const Color(0xFF1E293B),
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Row(
+                        child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(LucideIcons.clock, size: 16, color: Color(0xFF94A3B8)),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Total Lifetime Focus: ${TimeUtils.formatSecondsToTime(ref.watch(totalFocusProvider))}',
-                              style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(LucideIcons.clock, size: 14, color: Color(0xFF94A3B8)),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Lifetime: ${TimeUtils.formatSecondsToTime(ref.watch(totalFocusProvider))}',
+                                  style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(LucideIcons.calendarDays, size: 14, color: Color(0xFF6366F1)),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Today\'s Focus: ${TimeUtils.formatSecondsToDecimalHours(ref.watch(todayFocusProvider))}',
+                                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ),
                       ),
                     ],
                     const SizedBox(height: 40),

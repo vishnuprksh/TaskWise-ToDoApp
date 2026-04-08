@@ -23,3 +23,7 @@
 - **Context:** Final verification of Pomodoro features and launching the mobile app.
 - **Decision:** Verified that `FieldValue.increment` is correctly used in `TimerScreen` and that `PomodoroReportScreen` is fully implemented. Launched the app on the motorola edge 50 neo.
 - **Reasoning:** Ensuring code correctness before final handover. Observed some Firestore DNS warnings on the device, possibly due to local network state.
+### 2026-04-08 - Precision Focus Reporting
+- **Context:** User wants to see today's focus time in hours directly on the timer screen.
+- **Decision:** Implement a decimal hour format (X.XX hrs) and a daily aggregation provider.
+- **Reasoning:** Decimal hours provide a more analytical view suitable for "total hrs" and align with professional productivity tracking standards. Filtering sessions by date ensures real-time feedback on daily progress.

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
 import 'dart:ui';
 
 class SettingsScreen extends ConsumerWidget {
