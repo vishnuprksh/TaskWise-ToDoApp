@@ -54,7 +54,7 @@ dependencies:
   uuid: any
   wakelock_plus: ^1.2.8
   audioplayers: ^6.1.0
-  home_widget: any
+  home_widget: ^0.7.0
 
 dev_dependencies:
   flutter_test:

@@ -103,17 +103,26 @@ final widgetSyncProvider = Provider((ref) {
   // Register background callback once
   HomeWidget.registerBackgroundCallback(backgroundCallback);
 
-  // Sync tasks
+  // Sync tasks - exclude tasks belonging to archived projects
   ref.listen<AsyncValue<List<Task>>>(tasksProvider, (previous, next) {
     if (next is AsyncData<List<Task>>) {
-      WidgetService.updateTasks(next.value);
+      final projects = ref.read(projectsProvider).value ?? [];
+      final archivedProjectIds = projects
+          .where((p) => p.archived)
+          .map((p) => p.id)
+          .toSet();
+      final activeTasks = next.value
+          .where((t) => t.projectId == null || !archivedProjectIds.contains(t.projectId))
+          .toList();
+      WidgetService.updateTasks(activeTasks);
     }
   });
 
-  // Sync projects
+  // Sync projects - exclude archived projects
   ref.listen<AsyncValue<List<Project>>>(projectsProvider, (previous, next) {
     if (next is AsyncData<List<Project>>) {
-      WidgetService.updateProjects(next.value);
+      final activeProjects = next.value.where((p) => !p.archived).toList();
+      WidgetService.updateProjects(activeProjects);
     }
   });
 

@@ -106,8 +106,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Expanded(
                     child: tasksAsync.when(
                       data: (tasks) {
+                        // Build a set of archived project IDs for fast lookup
+                        final archivedProjectIds = projectsAsync.value
+                            ?.where((p) => p.archived)
+                            .map((p) => p.id)
+                            .toSet() ?? {};
+
                         final filteredTasks = (_selectedProjectId == null
-                            ? tasks
+                            // "All Projects" view: exclude tasks from archived projects
+                            ? tasks.where((t) => t.projectId == null || !archivedProjectIds.contains(t.projectId)).toList()
                             : tasks.where((t) => t.projectId == _selectedProjectId).toList());
 
                         // Sort by priorityScore descending

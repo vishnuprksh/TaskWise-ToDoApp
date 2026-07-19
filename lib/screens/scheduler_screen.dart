@@ -81,7 +81,6 @@ class _SchedulerScreenState extends ConsumerState<SchedulerScreen> {
   @override
   Widget build(BuildContext context) {
     final tasksAsync = ref.watch(tasksProvider);
-    final projectsAsync = ref.watch(projectsProvider);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -100,8 +99,16 @@ class _SchedulerScreenState extends ConsumerState<SchedulerScreen> {
                       builder: (context, snapshot) {
                         if (snapshot.hasData) {
                           final projects = snapshot.data!;
+                          final archivedProjectIds = projects
+                              .where((p) => p.archived)
+                              .map((p) => p.id)
+                              .toSet();
+                          // Exclude tasks from archived projects
+                          final activeTasks = allTasks
+                              .where((t) => t.projectId == null || !archivedProjectIds.contains(t.projectId))
+                              .toList();
                           final schedulerService = ref.read(schedulerServiceProvider);
-                          final tasksForDay = schedulerService.getTasksForDate(_currentDate, allTasks);
+                          final tasksForDay = schedulerService.getTasksForDate(_currentDate, activeTasks);
                           final projectMap = {for (var p in projects) p.id: p};
 
                           return _buildTimeline(tasksForDay, projectMap);

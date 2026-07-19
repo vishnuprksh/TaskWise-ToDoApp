@@ -32,7 +32,7 @@ class _TaskFormState extends ConsumerState<TaskForm> {
         ? Map<String, String>.from(widget.task!.attributes)
         : {
             'easiness': 'medium',
-            'importance': 'medium',
+            'importance': 'high',
             'emergency': 'medium',
             'interest': 'medium',
           };
@@ -131,31 +131,34 @@ class _TaskFormState extends ConsumerState<TaskForm> {
               ),
               const SizedBox(height: 20),
               projectsAsync.when(
-                data: (projects) => DropdownButtonFormField<String>(
-                  value: _selectedProjectId,
-                  style: const TextStyle(color: Colors.white),
-                  dropdownColor: const Color(0xFF1E293B),
-                  decoration: InputDecoration(
-                    labelText: 'Project',
-                    labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
-                    filled: true,
-                    fillColor: Colors.white.withOpacity(0.05),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                data: (projects) {
+                  final activeProjects = projects.where((p) => !p.archived || p.id == _selectedProjectId).toList();
+                  return DropdownButtonFormField<String>(
+                    value: _selectedProjectId,
+                    style: const TextStyle(color: Colors.white),
+                    dropdownColor: const Color(0xFF1E293B),
+                    decoration: InputDecoration(
+                      labelText: 'Project',
+                      labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                      filled: true,
+                      fillColor: Colors.white.withOpacity(0.05),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+                      ),
+                      prefixIcon: const Icon(LucideIcons.folder, color: Colors.white70),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-                    ),
-                    prefixIcon: const Icon(LucideIcons.folder, color: Colors.white70),
-                  ),
-                  items: [
-                    const DropdownMenuItem(value: null, child: Text('No Project')),
-                    ...projects.map((p) => DropdownMenuItem(value: p.id, child: Text(p.name))),
-                  ],
-                  onChanged: (val) => setState(() => _selectedProjectId = val),
-                ),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('No Project')),
+                      ...activeProjects.map((p) => DropdownMenuItem(value: p.id, child: Text(p.name))),
+                    ],
+                    onChanged: (val) => setState(() => _selectedProjectId = val),
+                  );
+                },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (err, __) => Text('Error: $err', style: const TextStyle(color: Colors.redAccent)),
               ),

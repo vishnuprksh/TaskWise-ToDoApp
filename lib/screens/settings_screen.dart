@@ -1,15 +1,42 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import 'dart:ui';
 
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  bool _pomodoroSoundEnabled = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSoundPreference();
+  }
+
+  Future<void> _loadSoundPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _pomodoroSoundEnabled = prefs.getBool('pomodoro_sound_enabled') ?? true;
+    });
+  }
+
+  Future<void> _setSoundPreference(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('pomodoro_sound_enabled', value);
+    setState(() => _pomodoroSoundEnabled = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authStateProvider);
     final user = authState.value;
 
@@ -25,7 +52,7 @@ class SettingsScreen extends ConsumerWidget {
                 children: [
                   _buildSectionHeader('Account & Sync'),
                   const SizedBox(height: 16),
-                  _buildProfileCard(context, ref, user),
+                  _buildProfileCard(context, user),
                   const SizedBox(height: 32),
                   _buildSectionHeader('Preferences'),
                   const SizedBox(height: 16),
@@ -46,6 +73,16 @@ class SettingsScreen extends ConsumerWidget {
                     trailing: const Text('ON', style: TextStyle(color: Color(0xFF6366F1), fontWeight: FontWeight.bold)),
                   ),
                   _buildSettingsItem(
+                    icon: LucideIcons.volume2,
+                    title: 'Pomodoro Sound',
+                    subtitle: 'Rain & bell sounds during focus',
+                    trailing: Switch(
+                      value: _pomodoroSoundEnabled,
+                      onChanged: _setSoundPreference,
+                      activeThumbColor: const Color(0xFF6366F1),
+                    ),
+                  ),
+                  _buildSettingsItem(
                     icon: LucideIcons.clock,
                     title: 'Pomodoro Timer',
                     subtitle: 'Customize focus intervals',
@@ -60,22 +97,22 @@ class SettingsScreen extends ConsumerWidget {
                     subtitle: 'FAQs and tutorials',
                     onTap: () {},
                   ),
-                    _buildSettingsItem(
-                      icon: LucideIcons.info,
-                      title: 'About TaskWise',
-                      subtitle: 'Version 1.0.0',
-                      onTap: () {},
-                    ),
-                    const SizedBox(height: 32),
-                    _buildSectionHeader('Maintenance'),
-                    const SizedBox(height: 16),
-                    _buildSettingsItem(
-                      icon: LucideIcons.database,
-                      title: 'Cleanup Legacy Data',
-                      subtitle: 'Remove deprecated focus fields',
-                      onTap: () => _showCleanupDialog(context, ref),
-                    ),
-                  ],
+                  _buildSettingsItem(
+                    icon: LucideIcons.info,
+                    title: 'About TaskWise',
+                    subtitle: 'Version 1.0.0',
+                    onTap: () {},
+                  ),
+                  const SizedBox(height: 32),
+                  _buildSectionHeader('Maintenance'),
+                  const SizedBox(height: 16),
+                  _buildSettingsItem(
+                    icon: LucideIcons.database,
+                    title: 'Cleanup Legacy Data',
+                    subtitle: 'Remove deprecated focus fields',
+                    onTap: () => _showCleanupDialog(context),
+                  ),
+                ],
               ),
             ),
           ],
@@ -127,7 +164,7 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildProfileCard(BuildContext context, WidgetRef ref, dynamic user) {
+  Widget _buildProfileCard(BuildContext context, dynamic user) {
     final bool isSignedIn = user != null;
 
     return Container(
@@ -186,7 +223,7 @@ class SettingsScreen extends ConsumerWidget {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () => _handleGoogleSignIn(context, ref),
+                onPressed: () => _handleGoogleSignIn(context),
                 icon: const Icon(LucideIcons.globe, size: 18),
                 label: const Text('Sync with Google'),
                 style: ElevatedButton.styleFrom(
@@ -281,7 +318,7 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _handleGoogleSignIn(BuildContext context, WidgetRef ref) async {
+  Future<void> _handleGoogleSignIn(BuildContext context) async {
     try {
       await ref.read(authServiceProvider).signInWithGoogle();
     } catch (e) {
@@ -296,7 +333,7 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 
-  void _showCleanupDialog(BuildContext context, WidgetRef ref) {
+  void _showCleanupDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

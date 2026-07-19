@@ -34,6 +34,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
   Map<TimerMode, int> _durations = {
     TimerMode.work: 25,
   };
+  bool _soundEnabled = true;
   double _dragDistance = 0;
 
   late AnimationController _progressController;
@@ -77,6 +78,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _durations[TimerMode.work] = prefs.getInt('work_duration') ?? 25;
+      _soundEnabled = prefs.getBool('pomodoro_sound_enabled') ?? true;
       
       if (!_isActive) {
         _timeLeft = _durations[_currentMode]! * 60;
@@ -94,7 +96,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
       _isActive = true;
     });
     WakelockPlus.enable();
-    _rainPlayer.resume();
+    if (_soundEnabled) _rainPlayer.resume();
     
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_timeLeft > 0) {
@@ -121,7 +123,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
 
   void _stopTimer() {
     _timer?.cancel();
-    _rainPlayer.pause();
+    if (_soundEnabled) _rainPlayer.pause();
     setState(() {
       _isActive = false;
     });
@@ -136,7 +138,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
 
   void _onTimerFinished() {
     _stopTimer();
-    _audioPlayer.resume();
+    if (_soundEnabled) _audioPlayer.resume();
     
     showDialog(
       context: context,
