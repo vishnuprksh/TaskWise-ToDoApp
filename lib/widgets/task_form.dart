@@ -30,12 +30,7 @@ class _TaskFormState extends ConsumerState<TaskForm> {
     _selectedProjectId = widget.task?.projectId ?? widget.initialProjectId;
     _attributes = widget.task?.attributes != null
         ? Map<String, String>.from(widget.task!.attributes)
-        : {
-            'easiness': 'medium',
-            'importance': 'high',
-            'emergency': 'medium',
-            'interest': 'medium',
-          };
+      : Map<String, String>.from(Task.defaultAttributes);
     _scheduledAt = widget.task?.scheduledAt;
   }
 
@@ -182,7 +177,10 @@ class _TaskFormState extends ConsumerState<TaskForm> {
                   final date = await showDatePicker(
                     context: context,
                     initialDate: _scheduledAt ?? DateTime.now(),
-                    firstDate: DateTime.now(),
+                    // Existing tasks can have schedules in the past. Allow
+                    // those tasks to be rescheduled instead of making the
+                    // date picker fail when the current schedule is opened.
+                    firstDate: DateTime(2000),
                     lastDate: DateTime.now().add(const Duration(days: 365)),
                     builder: (context, child) {
                       return Theme(

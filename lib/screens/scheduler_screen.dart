@@ -8,6 +8,7 @@ import '../models/project.dart';
 import '../services/scheduler_service.dart';
 import '../services/firestore_service.dart';
 import '../widgets/scheduler_event_item.dart';
+import '../widgets/task_form.dart';
 
 class SchedulerScreen extends ConsumerStatefulWidget {
   const SchedulerScreen({super.key});
@@ -71,6 +72,15 @@ class _SchedulerScreenState extends ConsumerState<SchedulerScreen> {
     setState(() {
       _currentDate = _currentDate.add(const Duration(days: 1));
     });
+  }
+
+  void _editTaskSchedule(Task task) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => TaskForm(task: task),
+    );
   }
 
   bool _isToday(DateTime date) {
@@ -289,6 +299,7 @@ class _SchedulerScreenState extends ConsumerState<SchedulerScreen> {
               child: SchedulerEventItem(
                 task: task,
                 projectColor: project?.colorValue ?? Colors.blue,
+                onTap: () => _editTaskSchedule(task),
                 onUpdate: (newTime, newDuration) {
                   if (newTime == null) {
                     ref.read(firestoreServiceProvider).updateTask(task.id, {

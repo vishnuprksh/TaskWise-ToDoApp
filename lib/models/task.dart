@@ -1,6 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Task {
+  static const Map<String, String> defaultAttributes = {
+    'easiness': 'high',
+    'importance': 'high',
+    'emergency': 'high',
+    'interest': 'high',
+  };
+
   final String id;
   final String text;
   final bool completed;
@@ -37,12 +44,10 @@ class Task {
       scheduledDuration: data['scheduledDuration'] ?? 60,
       startDate: _parseDateTime(data['startDate']),
       endDate: _parseDateTime(data['endDate']),
-      attributes: Map<String, String>.from(data['attributes'] ?? {
-        'easiness': 'medium',
-        'importance': 'medium',
-        'emergency': 'medium',
-        'interest': 'medium',
-      }),
+      attributes: {
+        ...defaultAttributes,
+        ...Map<String, String>.from(data['attributes'] ?? const {}),
+      },
     );
   }
 

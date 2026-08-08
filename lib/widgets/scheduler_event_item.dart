@@ -7,12 +7,14 @@ class SchedulerEventItem extends StatefulWidget {
   final Task task;
   final Color projectColor;
   final Function(DateTime?, int) onUpdate;
+  final VoidCallback? onTap;
 
   const SchedulerEventItem({
     super.key,
     required this.task,
     required this.projectColor,
     required this.onUpdate,
+    this.onTap,
   });
 
   @override
@@ -80,6 +82,7 @@ class _SchedulerEventItemState extends State<SchedulerEventItem> {
           children: [
             // Main Body (Drag to Move)
             GestureDetector(
+              onTap: widget.onTap,
               onVerticalDragStart: (_) => setState(() {
                 _isMoving = true;
                 _rawDragTop = initialTop;
