@@ -12,7 +12,6 @@ class ProjectsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final projectsAsync = ref.watch(projectsProvider);
-    final sessionsAsync = ref.watch(sessionsProvider);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -63,22 +62,21 @@ class ProjectsScreen extends ConsumerWidget {
               ),
               Expanded(
                 child: projectsAsync.when(
-                  data: (projects) => sessionsAsync.when(
-                    data: (sessions) {
+                  data: (projects) {
                       return ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
                         itemCount: projects.length,
                         itemBuilder: (context, index) {
                           final project = projects[index];
-                          final totalTime = sessions
-                              .where((s) => s.projectId == project.id)
-                              .fold(0, (sum, s) => sum + s.duration);
-
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 16),
                             child: ProjectItem(
                               project: project,
-                              totalTime: totalTime,
+                              // Focus-session history is loaded separately.
+                              // Keeping this screen independent of malformed
+                              // legacy session documents ensures projects can
+                              // always be opened.
+                              totalTime: 0,
                               onEdit: () => _showProjectForm(context, project: project),
                               onToggleArchive: () {
                                 ref.read(firestoreServiceProvider).updateProject(project.id, {
@@ -91,9 +89,6 @@ class ProjectsScreen extends ConsumerWidget {
                         },
                       );
                     },
-                    loading: () => const Center(child: CircularProgressIndicator()),
-                    error: (err, _) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.white))),
-                  ),
                   loading: () => const Center(child: CircularProgressIndicator()),
                   error: (err, _) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.white))),
                 ),

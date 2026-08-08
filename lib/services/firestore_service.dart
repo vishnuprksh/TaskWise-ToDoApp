@@ -67,10 +67,23 @@ class FirestoreService {
   Stream<List<PomodoroSession>> streamPomodoroSessions() {
     if (userId == null) return Stream.value([]);
     return _sessionsRef
-        .orderBy('startTime', descending: true)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => PomodoroSession.fromFirestore(doc)).toList());
+        .map((snapshot) {
+          // Older or partially-written session documents may contain a null
+          // startTime/endTime. Ignore those records instead of failing the
+          // entire stream (and any screen that watches sessionsProvider).
+          return snapshot.docs
+              .map((doc) {
+                try {
+                  return PomodoroSession.fromFirestore(doc);
+                } catch (_) {
+                  return null;
+                }
+              })
+              .whereType<PomodoroSession>()
+              .toList()
+            ..sort((a, b) => b.startTime.compareTo(a.startTime));
+        });
   }
 
   Future<void> addPomodoroSession(PomodoroSession session) {

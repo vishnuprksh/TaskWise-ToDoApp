@@ -54,7 +54,7 @@ class WidgetService {
     await _updateScheduleWidget();
   }
 
-  static Future<void> updateProjects(List<Project> projects) async {
+  static Future<void> updateProjects(List<dynamic> projects) async {
     final projectData = projects.map((p) => {
       'id': p.id,
       'name': p.name,
@@ -74,7 +74,7 @@ class WidgetService {
 
   static int _colorToArgb(Object? color) {
     if (color is int) return color;
-    if (color is Color) return color.toARGB32();
+    if (color is Color) return color.value;
     if (color is String) {
       final hex = color.replaceFirst('#', '');
       final normalized = hex.length == 6 ? 'FF$hex' : hex;

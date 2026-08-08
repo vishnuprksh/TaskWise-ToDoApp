@@ -21,13 +21,22 @@ class PomodoroSession {
 
   factory PomodoroSession.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    final startTime = data['startTime'];
+    final endTime = data['endTime'];
+
+    if (startTime is! Timestamp || endTime is! Timestamp) {
+      throw FormatException(
+        'Pomodoro session ${doc.id} has invalid startTime or endTime',
+      );
+    }
+
     return PomodoroSession(
       id: doc.id,
       taskId: data['taskId'] ?? '',
       projectId: data['projectId'],
       duration: data['duration'] ?? 0,
-      startTime: (data['startTime'] as Timestamp).toDate(),
-      endTime: (data['endTime'] as Timestamp).toDate(),
+      startTime: startTime.toDate(),
+      endTime: endTime.toDate(),
       isLegacy: data['isLegacy'] ?? false,
     );
   }
