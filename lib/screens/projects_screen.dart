@@ -63,11 +63,20 @@ class ProjectsScreen extends ConsumerWidget {
               Expanded(
                 child: projectsAsync.when(
                   data: (projects) {
+                      final sortedProjects = [...projects]
+                        ..sort((a, b) {
+                          if (a.archived != b.archived) {
+                            return a.archived ? 1 : -1;
+                          }
+
+                          return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+                        });
+
                       return ListView.builder(
                         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                        itemCount: projects.length,
+                        itemCount: sortedProjects.length,
                         itemBuilder: (context, index) {
-                          final project = projects[index];
+                          final project = sortedProjects[index];
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 16),
                             child: ProjectItem(
