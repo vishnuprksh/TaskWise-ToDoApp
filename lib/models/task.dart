@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'recurrence.dart';
 
 class Task {
   static const Map<String, String> defaultAttributes = {
@@ -18,6 +19,8 @@ class Task {
   final DateTime? startDate;
   final DateTime? endDate;
   final Map<String, String> attributes;
+  final RecurrenceRule? recurrence;
+  final Set<String> completedOccurrences;
 
   Task({
     required this.id,
@@ -30,6 +33,8 @@ class Task {
     this.startDate,
     this.endDate,
     required this.attributes,
+    this.recurrence,
+    this.completedOccurrences = const {},
   });
 
   factory Task.fromFirestore(DocumentSnapshot doc) {
@@ -48,7 +53,20 @@ class Task {
         ...defaultAttributes,
         ...Map<String, String>.from(data['attributes'] ?? const {}),
       },
+      recurrence: _parseRecurrence(data['recurrence']),
+      completedOccurrences: Set<String>.from(
+        data['completedOccurrences'] ?? const [],
+      ),
     );
+  }
+
+  static RecurrenceRule? _parseRecurrence(dynamic value) {
+    if (value == null) return null;
+    try {
+      return RecurrenceRule.fromFirestore(value);
+    } on FormatException {
+      return null;
+    }
   }
 
   static DateTime? _parseDateTime(dynamic value) {
@@ -64,11 +82,15 @@ class Task {
       'completed': completed,
       'projectId': projectId,
       'priorityScore': priorityScore,
-      'scheduledAt': scheduledAt != null ? Timestamp.fromDate(scheduledAt!) : null,
+      'scheduledAt': scheduledAt != null
+          ? Timestamp.fromDate(scheduledAt!)
+          : null,
       'scheduledDuration': scheduledDuration,
       'startDate': startDate != null ? Timestamp.fromDate(startDate!) : null,
       'endDate': endDate != null ? Timestamp.fromDate(endDate!) : null,
       'attributes': attributes,
+      'recurrence': recurrence?.toFirestore(),
+      'completedOccurrences': completedOccurrences.toList(),
     };
   }
 
@@ -79,11 +101,7 @@ class Task {
       'emergency': 0.2,
       'interest': 0.1,
     };
-    const values = {
-      'low': 1.0,
-      'medium': 2.0,
-      'high': 3.0,
-    };
+    const values = {'low': 1.0, 'medium': 2.0, 'high': 3.0};
 
     double score = 0;
     weights.forEach((key, weight) {
@@ -102,6 +120,8 @@ class Task {
     DateTime? startDate,
     DateTime? endDate,
     Map<String, String>? attributes,
+    RecurrenceRule? recurrence,
+    Set<String>? completedOccurrences,
   }) {
     return Task(
       id: id,
@@ -114,6 +134,8 @@ class Task {
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       attributes: attributes ?? this.attributes,
+      recurrence: recurrence ?? this.recurrence,
+      completedOccurrences: completedOccurrences ?? this.completedOccurrences,
     );
   }
 }

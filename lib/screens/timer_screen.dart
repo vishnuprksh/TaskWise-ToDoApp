@@ -91,6 +91,21 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
     await prefs.setInt('work_duration', _durations[TimerMode.work]!);
   }
 
+  Future<void> _setSoundEnabled(bool value) async {
+    setState(() {
+      _soundEnabled = value;
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('pomodoro_sound_enabled', value);
+
+    if (value && _isActive) {
+      await _rainPlayer.resume();
+    } else if (!value) {
+      await _rainPlayer.pause();
+    }
+  }
+
   void _startTimer() {
     setState(() {
       _isActive = true;
@@ -123,7 +138,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
 
   void _stopTimer() {
     _timer?.cancel();
-    if (_soundEnabled) _rainPlayer.pause();
+    _rainPlayer.pause();
     setState(() {
       _isActive = false;
     });
@@ -336,6 +351,14 @@ class _TimerScreenState extends ConsumerState<TimerScreen> with TickerProviderSt
                   MaterialPageRoute(builder: (context) => const PomodoroReportScreen()),
                 );
               },
+            ),
+            IconButton(
+              tooltip: _soundEnabled ? 'Turn sound off' : 'Turn sound on',
+              icon: Icon(
+                _soundEnabled ? LucideIcons.volume2 : LucideIcons.volumeX,
+                color: Colors.white,
+              ),
+              onPressed: () => _setSoundEnabled(!_soundEnabled),
             ),
             IconButton(
               icon: const Icon(LucideIcons.settings, color: Colors.white),

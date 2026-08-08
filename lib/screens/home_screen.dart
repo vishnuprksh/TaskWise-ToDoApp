@@ -13,6 +13,7 @@ import '../services/widget_service.dart';
 import 'package:home_widget/home_widget.dart';
 import 'timer_screen.dart';
 import 'settings_screen.dart';
+import '../services/recurrence_service.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -24,6 +25,7 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   String? _selectedProjectId;
   bool _isFinishedExpanded = false;
+  bool _isUpcomingExpanded = false;
   String _searchQuery = '';
 
   @override
@@ -35,14 +37,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _setupHomeWidgetListener() {
     // Check if the app was launched from the widget
     HomeWidget.initiallyLaunchedFromHomeWidget().then(_handleWidgetClick);
-    
+
     // Listen for clicks while the app is in the background
     HomeWidget.widgetClicked.listen(_handleWidgetClick);
   }
 
   void _handleWidgetClick(Uri? uri) {
     if (uri == null) return;
-    
+
     debugPrint('TaskWise Widget Clicked: $uri');
     final taskId = uri.queryParameters['taskId'];
     if (taskId == null) return;
@@ -51,10 +53,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     Future.delayed(const Duration(milliseconds: 500), () {
       final tasks = ref.read(tasksProvider).value;
       if (tasks == null) return;
-      
+
       try {
         final task = tasks.firstWhere((t) => t.id == taskId);
-        
+
         if (uri.host.toLowerCase() == 'startpomodoro') {
           if (mounted) {
             Navigator.push(
@@ -81,7 +83,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => TaskForm(task: task, initialProjectId: _selectedProjectId),
+      builder: (context) =>
+          TaskForm(task: task, initialProjectId: _selectedProjectId),
     );
   }
 
@@ -107,28 +110,65 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     child: tasksAsync.when(
                       data: (tasks) {
                         // Build a set of archived project IDs for fast lookup
-                        final archivedProjectIds = projectsAsync.value
-                            ?.where((p) => p.archived)
-                            .map((p) => p.id)
-                            .toSet() ?? {};
+                        final archivedProjectIds =
+                            projectsAsync.value
+                                ?.where((p) => p.archived)
+                                .map((p) => p.id)
+                                .toSet() ??
+                            {};
 
                         final filteredTasks = (_selectedProjectId == null
                             // "All Projects" view: exclude tasks from archived projects
-                            ? tasks.where((t) => t.projectId == null || !archivedProjectIds.contains(t.projectId)).toList()
-                            : tasks.where((t) => t.projectId == _selectedProjectId).toList());
+                            ? tasks
+                                  .where(
+                                    (t) =>
+                                        t.projectId == null ||
+                                        !archivedProjectIds.contains(
+                                          t.projectId,
+                                        ),
+                                  )
+                                  .toList()
+                            : tasks
+                                  .where(
+                                    (t) => t.projectId == _selectedProjectId,
+                                  )
+                                  .toList());
 
                         // Sort by priorityScore descending
-                        filteredTasks.sort((a, b) => b.priorityScore.compareTo(a.priorityScore));
+                        filteredTasks.sort(
+                          (a, b) => b.priorityScore.compareTo(a.priorityScore),
+                        );
 
-                        final ongoingTasks = filteredTasks.where((t) => !t.completed).toList();
-                        final finishedTasks = filteredTasks.where((t) => t.completed).toList();
+                        final ongoingTasks = filteredTasks.where((t) {
+                          if (t.recurrence == null) return !t.completed;
+                          return RecurrenceService.statusFor(t) ==
+                              RecurringTaskStatus.current;
+                        }).toList();
+                        final upcomingTasks = filteredTasks
+                            .where(
+                              (t) =>
+                                  t.recurrence != null &&
+                                  RecurrenceService.statusFor(t) ==
+                                      RecurringTaskStatus.upcoming,
+                            )
+                            .toList();
+                        final finishedTasks = filteredTasks.where((t) {
+                          if (t.recurrence == null) return t.completed;
+                          return RecurrenceService.statusFor(t) ==
+                              RecurringTaskStatus.finished;
+                        }).toList();
 
                         return ListView(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 10,
+                          ),
                           children: [
                             if (ongoingTasks.isNotEmpty) ...[
                               Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 15),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 15,
+                                ),
                                 child: Text(
                                   'Ongoing',
                                   style: TextStyle(
@@ -139,36 +179,66 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   ),
                                 ),
                               ),
-                              ...ongoingTasks.map((task) => _buildTaskItem(task)),
+                              ...ongoingTasks.map(
+                                (task) => _buildTaskItem(task),
+                              ),
+                            ],
+                            if (upcomingTasks.isNotEmpty) ...[
+                              const SizedBox(height: 20),
+                              _buildCollapsibleSection(
+                                title: 'Upcoming',
+                                expanded: _isUpcomingExpanded,
+                                onTap: () => setState(
+                                  () => _isUpcomingExpanded =
+                                      !_isUpcomingExpanded,
+                                ),
+                                tasks: upcomingTasks,
+                              ),
                             ],
                             if (finishedTasks.isNotEmpty) ...[
                               const SizedBox(height: 20),
                               ClipRect(
                                 child: BackdropFilter(
-                                  filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                                  filter: ImageFilter.blur(
+                                    sigmaX: 5,
+                                    sigmaY: 5,
+                                  ),
                                   child: InkWell(
-                                    onTap: () => setState(() => _isFinishedExpanded = !_isFinishedExpanded),
+                                    onTap: () => setState(
+                                      () => _isFinishedExpanded =
+                                          !_isFinishedExpanded,
+                                    ),
                                     borderRadius: BorderRadius.circular(15),
                                     child: Container(
-                                      padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 15),
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 15,
+                                        horizontal: 15,
+                                      ),
                                       decoration: BoxDecoration(
                                         color: Colors.white.withAlpha(15),
                                         borderRadius: BorderRadius.circular(15),
-                                        border: Border.all(color: Colors.white.withAlpha(20)),
+                                        border: Border.all(
+                                          color: Colors.white.withAlpha(20),
+                                        ),
                                       ),
                                       child: Row(
-                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
                                             'Finished',
                                             style: TextStyle(
                                               fontSize: 18,
                                               fontWeight: FontWeight.w700,
-                                              color: Colors.white.withAlpha(180),
+                                              color: Colors.white.withAlpha(
+                                                180,
+                                              ),
                                             ),
                                           ),
                                           Icon(
-                                            _isFinishedExpanded ? LucideIcons.chevronUp : LucideIcons.chevronDown,
+                                            _isFinishedExpanded
+                                                ? LucideIcons.chevronUp
+                                                : LucideIcons.chevronDown,
                                             color: Colors.white.withAlpha(180),
                                             size: 20,
                                           ),
@@ -180,20 +250,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               ),
                               if (_isFinishedExpanded) ...[
                                 const SizedBox(height: 10),
-                                ...finishedTasks.map((task) => _buildTaskItem(task)),
+                                ...finishedTasks.map(
+                                  (task) => _buildTaskItem(task),
+                                ),
                               ],
                             ],
-                            if (filteredTasks.isEmpty)
+                            if (ongoingTasks.isEmpty &&
+                                upcomingTasks.isEmpty &&
+                                finishedTasks.isEmpty)
                               Center(
                                 child: Padding(
                                   padding: const EdgeInsets.only(top: 80),
                                   child: Column(
                                     children: [
-                                      Icon(LucideIcons.clipboardList, size: 60, color: Colors.white.withAlpha(30)),
+                                      Icon(
+                                        LucideIcons.clipboardList,
+                                        size: 60,
+                                        color: Colors.white.withAlpha(30),
+                                      ),
                                       const SizedBox(height: 16),
                                       Text(
                                         'No tasks found',
-                                        style: TextStyle(color: Colors.white.withAlpha(100), fontSize: 16),
+                                        style: TextStyle(
+                                          color: Colors.white.withAlpha(100),
+                                          fontSize: 16,
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -204,7 +285,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         );
                       },
                       loading: () => Center(child: CircularProgressIndicator()),
-                      error: (err, _) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.white))),
+                      error: (err, _) => Center(
+                        child: Text(
+                          'Error: $err',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -228,7 +314,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           onPressed: () => _showTaskForm(),
           backgroundColor: Colors.indigo,
           elevation: 0,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: const Icon(LucideIcons.plus, color: Colors.white, size: 28),
         ),
       ),
@@ -244,14 +332,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         builder: (context, setModalState) {
           final activeProjects = projects.where((p) => !p.archived).toList();
           final filteredProjects = activeProjects
-              .where((p) => p.name.toLowerCase().contains(_searchQuery.toLowerCase()))
+              .where(
+                (p) =>
+                    p.name.toLowerCase().contains(_searchQuery.toLowerCase()),
+              )
               .toList();
 
           return Container(
             height: MediaQuery.of(context).size.height * 0.75,
             decoration: BoxDecoration(
               color: const Color(0xFF1E293B),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(30),
+              ),
               border: Border.all(color: Colors.white.withAlpha(20)),
             ),
             child: Column(
@@ -284,7 +377,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             setState(() => _selectedProjectId = null);
                             Navigator.pop(context);
                           },
-                          child: const Text('Clear Filter', style: TextStyle(color: Colors.indigoAccent)),
+                          child: const Text(
+                            'Clear Filter',
+                            style: TextStyle(color: Colors.indigoAccent),
+                          ),
                         ),
                     ],
                   ),
@@ -300,7 +396,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     decoration: InputDecoration(
                       hintText: 'Search projects...',
                       hintStyle: TextStyle(color: Colors.white.withAlpha(80)),
-                      prefixIcon: const Icon(LucideIcons.search, color: Colors.white70, size: 20),
+                      prefixIcon: const Icon(
+                        LucideIcons.search,
+                        color: Colors.white70,
+                        size: 20,
+                      ),
                       filled: true,
                       fillColor: Colors.white.withAlpha(10),
                       border: OutlineInputBorder(
@@ -325,13 +425,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           leading: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: _selectedProjectId == null ? Colors.indigo : Colors.white.withAlpha(10),
+                              color: _selectedProjectId == null
+                                  ? Colors.indigo
+                                  : Colors.white.withAlpha(10),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(LucideIcons.layers, color: Colors.white, size: 18),
+                            child: const Icon(
+                              LucideIcons.layers,
+                              color: Colors.white,
+                              size: 18,
+                            ),
                           ),
-                          title: const Text('All Tasks', style: TextStyle(color: Colors.white)),
-                          trailing: _selectedProjectId == null ? const Icon(LucideIcons.check, color: Colors.indigoAccent) : null,
+                          title: const Text(
+                            'All Tasks',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                          trailing: _selectedProjectId == null
+                              ? const Icon(
+                                  LucideIcons.check,
+                                  color: Colors.indigoAccent,
+                                )
+                              : null,
                         );
                       }
                       final project = filteredProjects[index - 1];
@@ -347,7 +461,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           decoration: BoxDecoration(
                             color: project.colorValue.withAlpha(40),
                             shape: BoxShape.circle,
-                            border: Border.all(color: project.colorValue.withAlpha(100)),
+                            border: Border.all(
+                              color: project.colorValue.withAlpha(100),
+                            ),
                           ),
                           child: Center(
                             child: Container(
@@ -360,8 +476,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                           ),
                         ),
-                        title: Text(project.name, style: const TextStyle(color: Colors.white)),
-                        trailing: isSelected ? const Icon(LucideIcons.check, color: Colors.indigoAccent) : null,
+                        title: Text(
+                          project.name,
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        trailing: isSelected
+                            ? const Icon(
+                                LucideIcons.check,
+                                color: Colors.indigoAccent,
+                              )
+                            : null,
                       );
                     },
                   ),
@@ -374,7 +498,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, AsyncValue<List<Project>> projectsAsync) {
+  Widget _buildHeader(
+    BuildContext context,
+    AsyncValue<List<Project>> projectsAsync,
+  ) {
     return Padding(
       padding: const EdgeInsets.all(20.0),
       child: Row(
@@ -384,13 +511,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Welcome back,', style: TextStyle(color: Colors.grey, fontSize: 14)),
+                const Text(
+                  'Welcome back,',
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                ),
                 const SizedBox(height: 4),
                 projectsAsync.when(
                   data: (projects) {
-                    final selectedProject = _selectedProjectId == null 
-                        ? null 
-                        : projects.firstWhere((p) => p.id == _selectedProjectId);
+                    final selectedProject = _selectedProjectId == null
+                        ? null
+                        : projects.firstWhere(
+                            (p) => p.id == _selectedProjectId,
+                          );
                     return InkWell(
                       onTap: () => _showProjectSelector(projects),
                       borderRadius: BorderRadius.circular(12),
@@ -409,13 +541,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Icon(LucideIcons.chevronDown, color: Colors.white.withAlpha(150), size: 20),
+                          Icon(
+                            LucideIcons.chevronDown,
+                            color: Colors.white.withAlpha(150),
+                            size: 20,
+                          ),
                         ],
                       ),
                     );
                   },
-                  loading: () => const Text('TaskWise', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
-                  error: (_, __) => const Text('TaskWise', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold)),
+                  loading: () => const Text(
+                    'TaskWise',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  error: (_, __) => const Text(
+                    'TaskWise',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -426,28 +576,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const SchedulerScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => const SchedulerScreen(),
+                    ),
                   );
                 },
-                icon: const Icon(LucideIcons.calendar, color: Colors.white, size: 24),
+                icon: const Icon(
+                  LucideIcons.calendar,
+                  color: Colors.white,
+                  size: 24,
+                ),
               ),
               IconButton(
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const ProjectsScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => const ProjectsScreen(),
+                    ),
                   );
                 },
-                icon: const Icon(LucideIcons.layers, color: Colors.white, size: 24),
+                icon: const Icon(
+                  LucideIcons.layers,
+                  color: Colors.white,
+                  size: 24,
+                ),
               ),
               IconButton(
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const SettingsScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsScreen(),
+                    ),
                   );
                 },
-                icon: const Icon(LucideIcons.settings, color: Colors.white, size: 24),
+                icon: const Icon(
+                  LucideIcons.settings,
+                  color: Colors.white,
+                  size: 24,
+                ),
               ),
             ],
           ),
@@ -455,7 +623,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
-
 
   Widget _buildTaskItem(Task task) {
     final projects = ref.read(projectsProvider).value ?? [];
@@ -465,9 +632,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       task: task,
       projectName: project?.name,
       onToggle: () {
-        ref.read(firestoreServiceProvider).updateTask(task.id, {
-          'completed': !task.completed,
-        });
+        if (task.recurrence != null) {
+          final due = RecurrenceService.nextOccurrence(task, DateTime.now());
+          if (due != null) {
+            final completedOccurrences = {
+              ...task.completedOccurrences,
+              RecurrenceService.occurrenceKey(due),
+            };
+            ref.read(firestoreServiceProvider).updateTask(task.id, {
+              'completedOccurrences': completedOccurrences.toList(),
+            });
+          }
+        } else {
+          ref.read(firestoreServiceProvider).updateTask(task.id, {
+            'completed': !task.completed,
+          });
+        }
       },
       onDelete: () {
         ref.read(firestoreServiceProvider).deleteTask(task.id);
@@ -529,7 +709,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Task scheduled for ${scheduledDateTime.toString().substring(0, 16)}'),
+                  content: Text(
+                    'Task scheduled for ${scheduledDateTime.toString().substring(0, 16)}',
+                  ),
                   backgroundColor: Colors.indigo,
                 ),
               );
@@ -537,6 +719,62 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           }
         }
       },
+    );
+  }
+
+  Widget _buildCollapsibleSection({
+    required String title,
+    required bool expanded,
+    required VoidCallback onTap,
+    required List<Task> tasks,
+  }) {
+    return Column(
+      children: [
+        ClipRect(
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(15),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  vertical: 15,
+                  horizontal: 15,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withAlpha(15),
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: Colors.white.withAlpha(20)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white.withAlpha(180),
+                      ),
+                    ),
+                    Icon(
+                      expanded
+                          ? LucideIcons.chevronUp
+                          : LucideIcons.chevronDown,
+                      color: Colors.white.withAlpha(180),
+                      size: 20,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        if (expanded) ...[
+          const SizedBox(height: 10),
+          ...tasks.map((task) => _buildTaskItem(task)),
+        ],
+      ],
     );
   }
 }

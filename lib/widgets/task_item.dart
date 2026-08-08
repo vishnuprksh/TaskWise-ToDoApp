@@ -11,6 +11,7 @@ class TaskItem extends StatelessWidget {
   final VoidCallback onDelete;
   final VoidCallback onTap;
   final VoidCallback? onSchedule;
+  final bool isPeriodic;
 
   const TaskItem({
     Key? key,
@@ -20,6 +21,7 @@ class TaskItem extends StatelessWidget {
     required this.onDelete,
     required this.onTap,
     this.onSchedule,
+    this.isPeriodic = false,
   }) : super(key: key);
 
   @override
@@ -28,7 +30,9 @@ class TaskItem extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Dismissible(
         key: Key(task.id),
-        direction: onSchedule != null ? DismissDirection.horizontal : DismissDirection.endToStart,
+        direction: onSchedule != null
+            ? DismissDirection.horizontal
+            : DismissDirection.endToStart,
         background: ClipRRect(
           borderRadius: BorderRadius.circular(20),
           child: Container(
@@ -52,7 +56,7 @@ class TaskItem extends StatelessWidget {
             if (onSchedule != null) onSchedule!();
             return false;
           }
-          
+
           return await showDialog(
             context: context,
             builder: (BuildContext context) {
@@ -64,16 +68,34 @@ class TaskItem extends StatelessWidget {
                     borderRadius: BorderRadius.circular(24),
                     side: BorderSide(color: Colors.white.withAlpha(40)),
                   ),
-                  title: const Text('Confirm', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                  content: const Text('Are you sure you want to delete this task?', style: TextStyle(color: Colors.white70)),
+                  title: const Text(
+                    'Confirm',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  content: const Text(
+                    'Are you sure you want to delete this task?',
+                    style: TextStyle(color: Colors.white70),
+                  ),
                   actions: <Widget>[
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(false),
-                      child: Text('CANCEL', style: TextStyle(color: Colors.white.withAlpha(200))),
+                      child: Text(
+                        'CANCEL',
+                        style: TextStyle(color: Colors.white.withAlpha(200)),
+                      ),
                     ),
                     TextButton(
                       onPressed: () => Navigator.of(context).pop(true),
-                      child: const Text('DELETE', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'DELETE',
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -92,15 +114,22 @@ class TaskItem extends StatelessWidget {
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Container(
               decoration: BoxDecoration(
-                color: task.completed ? Colors.white.withAlpha(10) : Colors.white.withAlpha(25),
+                color: task.completed
+                    ? Colors.white.withAlpha(10)
+                    : Colors.white.withAlpha(25),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: task.completed ? Colors.white.withAlpha(15) : Colors.white.withAlpha(35),
+                  color: task.completed
+                      ? Colors.white.withAlpha(15)
+                      : Colors.white.withAlpha(35),
                   width: 1,
                 ),
               ),
               child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 onTap: onTap,
                 leading: GestureDetector(
                   onTap: onToggle,
@@ -110,13 +139,21 @@ class TaskItem extends StatelessWidget {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: task.completed ? Colors.greenAccent : Colors.white.withAlpha(100),
+                        color: task.completed
+                            ? Colors.greenAccent
+                            : Colors.white.withAlpha(100),
                         width: 2,
                       ),
-                      color: task.completed ? Colors.greenAccent.withAlpha(50) : Colors.transparent,
+                      color: task.completed
+                          ? Colors.greenAccent.withAlpha(50)
+                          : Colors.transparent,
                     ),
                     child: task.completed
-                        ? const Icon(LucideIcons.check, size: 16, color: Colors.greenAccent)
+                        ? const Icon(
+                            LucideIcons.check,
+                            size: 16,
+                            color: Colors.greenAccent,
+                          )
                         : null,
                   ),
                 ),
@@ -140,9 +177,15 @@ class TaskItem extends StatelessWidget {
                       task.text,
                       style: TextStyle(
                         fontSize: 16,
-                        fontWeight: task.completed ? FontWeight.w400 : FontWeight.w600,
-                        decoration: task.completed ? TextDecoration.lineThrough : null,
-                        color: task.completed ? Colors.white.withAlpha(100) : Colors.white,
+                        fontWeight: task.completed
+                            ? FontWeight.w400
+                            : FontWeight.w600,
+                        decoration: task.completed
+                            ? TextDecoration.lineThrough
+                            : null,
+                        color: task.completed
+                            ? Colors.white.withAlpha(100)
+                            : Colors.white,
                       ),
                     ),
                   ],
@@ -152,11 +195,18 @@ class TaskItem extends StatelessWidget {
                         padding: const EdgeInsets.only(top: 4),
                         child: Row(
                           children: [
-                            Icon(LucideIcons.calendar, size: 12, color: Colors.white.withAlpha(150)),
+                            Icon(
+                              LucideIcons.calendar,
+                              size: 12,
+                              color: Colors.white.withAlpha(150),
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               '${task.scheduledAt!.day}/${task.scheduledAt!.month} ${task.scheduledAt!.hour.toString().padLeft(2, '0')}:${task.scheduledAt!.minute.toString().padLeft(2, '0')}',
-                              style: TextStyle(fontSize: 12, color: Colors.white.withAlpha(150)),
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.white.withAlpha(150),
+                              ),
                             ),
                           ],
                         ),
@@ -184,7 +234,10 @@ class TaskItem extends StatelessWidget {
                       tooltip: 'Start Timer',
                     ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
@@ -194,11 +247,15 @@ class TaskItem extends StatelessWidget {
                         ),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: _getPriorityColor(task.priorityScore).withAlpha(100),
+                          color: _getPriorityColor(
+                            task.priorityScore,
+                          ).withAlpha(100),
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: _getPriorityColor(task.priorityScore).withAlpha(50),
+                            color: _getPriorityColor(
+                              task.priorityScore,
+                            ).withAlpha(50),
                             blurRadius: 8,
                             spreadRadius: -2,
                           ),
