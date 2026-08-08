@@ -52,3 +52,5 @@ app.*.map.json
 react/taskwise.apk
 react/extractCert.js
 react/extract_jks_manual.py
+.vscode/
+graphify-out/

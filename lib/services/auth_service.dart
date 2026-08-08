@@ -10,10 +10,11 @@ final authStateProvider = StreamProvider<User?>((ref) {
 
 class AuthService {
   AuthService() {
-    _googleSignIn.initialize();
+    _googleSignInInitialization = _googleSignIn.initialize();
   }
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
+  late final Future<void> _googleSignInInitialization;
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
@@ -34,6 +35,10 @@ class AuthService {
 
   Future<UserCredential?> signInWithGoogle() async {
     try {
+      // google_sign_in 7.x requires initialization to finish before calling
+      // authenticate(). Starting this in the constructor avoids doing it on
+      // every sign-in, while awaiting it here prevents a startup race.
+      await _googleSignInInitialization;
       final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
 
       final GoogleSignInAuthentication googleAuth = googleUser.authentication;

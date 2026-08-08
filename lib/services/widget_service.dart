@@ -54,11 +54,14 @@ class WidgetService {
     await _updateScheduleWidget();
   }
 
-  static Future<void> updateProjects(List<dynamic> projects) async {
+  static Future<void> updateProjects(List<Project> projects) async {
     final projectData = projects.map((p) => {
       'id': p.id,
       'name': p.name,
-      'color': p.color?.value ?? 0xFF000000,
+      // Project.color is stored as a hex string (for example, '#3b82f6'),
+      // not as a Flutter Color. Convert it to the ARGB integer expected by
+      // the native widget without calling `.value` on the string.
+      'color': _colorToArgb(p.color),
     }).toList();
     
     // Add "All Tasks" option
@@ -67,6 +70,18 @@ class WidgetService {
     await HomeWidget.saveWidgetData<String>('projects_json', jsonEncode(projectData));
     await _updateWidget();
     await _updateScheduleWidget();
+  }
+
+  static int _colorToArgb(Object? color) {
+    if (color is int) return color;
+    if (color is Color) return color.toARGB32();
+    if (color is String) {
+      final hex = color.replaceFirst('#', '');
+      final normalized = hex.length == 6 ? 'FF$hex' : hex;
+      final parsed = int.tryParse(normalized, radix: 16);
+      if (parsed != null) return parsed;
+    }
+    return 0xFF000000;
   }
 
   static Future<void> updateTimer({
